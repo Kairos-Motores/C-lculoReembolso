@@ -24,11 +24,13 @@ function App() {
   const { distanciaReal, rastrear, pararRastreio } = useDistance();
   const TAXA = 0.65;
 
+  // Tema AMOLED
   useEffect(() => {
     localStorage.setItem('tema_dark', JSON.stringify(isDarkMode));
     document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
   }, [isDarkMode]);
 
+  // Sincronização Inicial
   useEffect(() => {
     const carregarDados = async () => {
       try {
@@ -37,13 +39,16 @@ function App() {
         if (response.ok && Array.isArray(dadosSincronizados)) {
           setViagens(dadosSincronizados);
           localStorage.setItem('viagens_motorista', JSON.stringify(dadosSincronizados));
+          toast.success("Dados sincronizados com Dataverse!", { icon: '🔄' });
         }
-      } catch (e) { console.log("Offline"); }
+      } catch (e) { 
+        toast.error("Trabalhando em modo Offline.");
+      }
     };
     carregarDados();
   }, []);
 
-  // Totais Dinâmicos
+  // Totais
   const totalGeral = useMemo(() => 
     viagens.reduce((acc, v) => acc + parseFloat(v.pagamento), 0).toFixed(2)
   , [viagens]);
@@ -67,20 +72,20 @@ function App() {
 
   const handleSalvar = async () => {
     const { rota, kmInicio, kmFim } = form;
-    if (!rota) return toast.error("Informe a rota!");
+    if (!rota) return toast.error("O nome da rota é obrigatório!");
 
     let distanciaFinal = 0;
     if (!gpsAtivo && kmInicio && kmFim) {
       const diff = parseFloat(kmFim) - parseFloat(kmInicio);
-      if (diff <= 0) return toast.error("KM Final deve ser maior!");
+      if (diff <= 0) return toast.error("KM final deve ser maior!");
       distanciaFinal = Math.ceil(diff);
     } else if (gpsAtivo && distanciaReal > 0) {
       distanciaFinal = Math.ceil(distanciaReal);
     } else {
-      return toast.error("Use o GPS ou preencha o KM!");
+      return toast.error("Preencha os KMs ou use o GPS!");
     }
 
-    const valor = (distanciaFinal * TAXA).toFixed(2);
+    const valorPagamento = (distanciaFinal * TAXA).toFixed(2);
     const novaViagem = {
       id: Date.now(),
       data: new Date().toLocaleDateString('pt-BR'),
@@ -90,38 +95,45 @@ function App() {
       kmFim: gpsAtivo ? 0 : parseFloat(kmFim),
       distanciaPercorrida: distanciaFinal,
       distanciaRealGps: distanciaReal.toFixed(2),
-      pagamento: valor
+      pagamento: valorPagamento
     };
 
     setEnviando(true);
-    const idToast = toast.loading("Sincronizando...");
+    const idToast = toast.loading("Sincronizando com Dataverse...");
+
     try {
-      await fetch('/api/reembolsos', {
+      const response = await fetch('/api/reembolsos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(novaViagem)
       });
+      if (!response.ok) throw new Error();
+
       setViagens([novaViagem, ...viagens]);
       setForm({ rota: '', combustivel: '', kmInicio: '', kmFim: '' });
       if(gpsAtivo) { pararRastreio(); setGpsAtivo(false); }
-      toast.success("Salvo no Dataverse!", { id: idToast });
-    } catch (e) {
+      
+      toast.success(`Sincronizado! Reembolso: R$ ${valorPagamento}`, { id: idToast, icon: '✅' });
+    } catch (error) {
       setViagens([novaViagem, ...viagens]);
-      toast.error("Salvo localmente.", { id: idToast });
-    } finally { setEnviando(false); }
+      toast.error("Erro no Dataverse. Salvo apenas localmente.", { id: idToast });
+    } finally { 
+      setEnviando(false); 
+    }
   };
 
   const exportar = () => {
+    if (viagensFiltradas.length === 0) return toast.error("Sem dados para exportar.");
     const ws = XLSX.utils.json_to_sheet(viagensFiltradas);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Reembolsos");
-    XLSX.writeFile(wb, `Relatorio_Reembolso.xlsx`);
-    toast.success("Excel gerado!");
+    XLSX.writeFile(wb, `Relatorio_Reembolso_${new Date().getTime()}.xlsx`);
+    toast.success(`Excel gerado com ${viagensFiltradas.length} registros!`, { icon: '📊' });
   };
 
   return (
     <div className="container">
-      <Toaster position="top-center" />
+      <Toaster position="top-center" reverseOrder={false} />
       
       <header>
         <div className="header-nav">
@@ -144,24 +156,32 @@ function App() {
       </header>
 
       <div className="card">
+        <h3>Nova Viagem</h3>
         <input className="full-width" type="text" placeholder="Nome da Rota" value={form.rota}
           onChange={e => setForm({...form, rota: e.target.value})} />
         
         {!gpsAtivo && (
           <div className="input-group-row animate-in">
-            <input type="number" placeholder="KM Inicial" value={form.kmInicio}
+            <input type="number" inputMode="decimal" placeholder="KM Inicial" value={form.kmInicio}
               onChange={e => setForm({...form, kmInicio: e.target.value})} />
-            <input type="number" placeholder="KM Final" value={form.kmFim}
+            <input type="number" inputMode="decimal" placeholder="KM Final" value={form.kmFim}
               onChange={e => setForm({...form, kmFim: e.target.value})} />
           </div>
         )}
 
         <div className={`gps-section ${gpsAtivo ? 'active' : ''}`}>
           <button onClick={() => {
-            if(!gpsAtivo) { rastrear(); setGpsAtivo(true); } 
-            else { pararRastreio(); setGpsAtivo(false); }
+            if(!gpsAtivo) { 
+              rastrear(); 
+              setGpsAtivo(true);
+              toast('GPS Ativado!', { icon: '📍' });
+            } else { 
+              pararRastreio(); 
+              setGpsAtivo(false);
+              toast('GPS Desligado', { icon: '🛑' });
+            }
           }} className={gpsAtivo ? 'btn-gps-stop' : 'btn-gps-start'}>
-            {gpsAtivo ? '🛑 Parar GPS' : '📍 Ativar GPS'}
+            {gpsAtivo ? '🛑 Parar GPS' : '📍 Usar GPS'}
           </button>
           {gpsAtivo && <span className="gps-live"><strong>{distanciaReal.toFixed(2)} km</strong></span>}
         </div>
@@ -184,7 +204,7 @@ function App() {
       </div>
 
       <button onClick={exportar} className="btn-export">
-        📊 Exportar ({viagensFiltradas.length})
+        📊 Exportar Seleção ({viagensFiltradas.length})
       </button>
 
       <div className="history">
@@ -202,4 +222,4 @@ function App() {
   );
 }
 
-export default App; 
+export default App;
