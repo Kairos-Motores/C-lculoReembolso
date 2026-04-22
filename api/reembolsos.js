@@ -1,12 +1,34 @@
 import axios from 'axios';
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET') return res.status(405).send('Method Not Allowed');
+  // Log para debug no painel da Vercel
+  console.log(`Método recebido: ${req.method}`);
 
-  const { TENANT_ID, CLIENT_ID, CLIENT_SECRET, ENV_URL } = process.env;
+  // 1. Lidar com requisições OPTIONS (CORS)
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Allow', 'POST');
+    return res.status(200).end();
+  }
+
+  // 2. Trava de segurança para aceitar apenas POST
+  if (req.method !== 'POST') {
+    return res.status(405).json({ 
+      success: false, 
+      message: `Método ${req.method} não permitido. Use POST.` 
+    });
+  }
+
+  const { 
+    TENANT_ID, 
+    CLIENT_ID, 
+    CLIENT_SECRET, 
+    ENV_URL 
+  } = process.env;
+
+  const dados = req.body;
 
   try {
-    // 1. Token de Acesso
+    // 3. Obter Token de Acesso
     const tokenResponse = await axios.post(
       `https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token`,
       new URLSearchParams({
@@ -14,41 +36,51 @@ export default async function handler(req, res) {
         scope: `${ENV_URL}/.default`,
         client_secret: CLIENT_SECRET,
         grant_type: 'client_credentials',
-      }).toString()
+      }).toString(),
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
     );
 
-    const token = tokenResponse.data.access_token;
+    const accessToken = tokenResponse.data.access_token;
 
-    // 2. Buscar dados (usando o mesmo Entity Set Name do POST)
-    // Usamos $orderby para trazer as mais recentes primeiro
+    // 4. Enviar dados para o Dataverse
+    // O plural de viagens geralmente é 'viagenses' no plural automático do Dataverse
     const entitySetName = "cr4a1_reembolsos_viagenses"; 
-    const response = await axios.get(
-      `${ENV_URL}/api/data/v9.2/${entitySetName}?$orderby=createdon desc`,
+
+    const dataverseResponse = await axios.post(
+      `${ENV_URL}/api/data/v9.2/${entitySetName}`, 
+      {
+        cr4a1_rota: dados.rota,
+        cr4a1_km_inicial: parseFloat(dados.kmInicio),
+        cr4a1_km_final: parseFloat(dados.kmFim),
+        cr4a1_km_percorrido: parseInt(dados.distanciaPercorrida),
+        cr4a1_km_gps: parseFloat(dados.distanciaRealGps),
+        cr4a1_valor_reembolso: parseFloat(dados.pagamento),
+        cr4a1_combustivel: dados.combustivel ? parseFloat(dados.combustivel) : 0,
+        // Garante que a data seja enviada no formato YYYY-MM-DD
+        cr4a1_data: new Date().toISOString().split('T')[0]
+      },
       {
         headers: {
-          Authorization: `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Prefer': 'odata.include-annotations="*"'
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
         }
       }
     );
 
-    // 3. Mapear os nomes das colunas do Dataverse de volta para o formato do seu App
-    const viagensMapeadas = response.data.value.map(v => ({
-      id: v.cr4a1_reembolsos_viagensid, // ID único do Dataverse
-      data: new Date(v.cr4a1_data).toLocaleDateString('pt-BR'),
-      rota: v.cr4a1_rota,
-      combustivel: v.cr4a1_combustivel,
-      kmInicio: v.cr4a1_km_inicial,
-      kmFim: v.cr4a1_km_final,
-      distanciaPercorrida: v.cr4a1_km_percorrido,
-      distanciaRealGps: v.cr4a1_km_gps,
-      pagamento: v.cr4a1_valor_reembolso
-    }));
-
-    return res.status(200).json(viagensMapeadas);
+    return res.status(201).json({
+      success: true,
+      data: dataverseResponse.data
+    });
 
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    const errorDetail = error.response?.data || error.message;
+    console.error('Erro na integração Dataverse:', JSON.stringify(errorDetail, null, 2));
+
+    return res.status(500).json({ 
+      success: false,
+      message: error.response?.data?.error?.message || "Falha ao sincronizar",
+      debug: errorDetail 
+    });
   }
 }
