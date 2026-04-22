@@ -111,7 +111,10 @@ function App() {
 
       setViagens([novaViagem, ...viagens]);
       setForm({ rota: '', combustivel: '', kmInicio: '', kmFim: '' });
-      if(gpsAtivo) { pararRastreio(); setGpsAtivo(false); }
+      if(gpsAtivo) { 
+        pararRastreio(); 
+        setGpsAtivo(false); 
+      }
       
       toast.success(`Sincronizado! Reembolso: R$ ${valorPagamento}`, { id: idToast, icon: '✅' });
     } catch (error) {

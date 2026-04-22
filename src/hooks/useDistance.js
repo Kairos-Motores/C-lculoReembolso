@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useRef } from 'react';
 
 // Função de Haversine para calcular distância entre dois pontos em KM
 const calcularKm = (lat1, lon1, lat2, lon2) => {
@@ -15,19 +15,39 @@ const calcularKm = (lat1, lon1, lat2, lon2) => {
 export const useDistance = () => {
   const [distanciaReal, setDistanciaReal] = useState(0);
   const [ultimaPosicao, setUltimaPosicao] = useState(null);
+  const watchId = useRef(null); // Armazena o ID do rastreamento para desligar depois
 
   const rastrear = () => {
-    if ("geolocation" in navigator) {
-      navigator.geolocation.watchPosition((pos) => {
+    if ("geolocation" in navigator && watchId.current === null) {
+      watchId.current = navigator.geolocation.watchPosition((pos) => {
         const { latitude, longitude } = pos.coords;
-        if (ultimaPosicao) {
-          const d = calcularKm(ultimaPosicao.lat, ultimaPosicao.lng, latitude, longitude);
-          setDistanciaReal(prev => prev + d);
-        }
-        setUltimaPosicao({ lat: latitude, lng: longitude });
-      }, null, { enableHighAccuracy: true });
+        
+        setUltimaPosicao(prev => {
+          if (prev) {
+            const d = calcularKm(prev.lat, prev.lng, latitude, longitude);
+            // Evita somar micro-distâncias causadas por imprecisão do GPS parado
+            if (d > 0.005) { 
+               setDistanciaReal(total => total + d);
+            }
+          }
+          return { lat: latitude, lng: longitude };
+        });
+      }, (err) => console.error(err), { 
+        enableHighAccuracy: true,
+        maximumAge: 0,
+        timeout: 5000 
+      });
     }
   };
 
-  return { distanciaReal, rastrear };
+  const pararRastreio = () => {
+    if (watchId.current !== null) {
+      navigator.geolocation.clearWatch(watchId.current);
+      watchId.current = null;
+      setUltimaPosicao(null);
+      setDistanciaReal(0); // Zera a contagem ao desligar
+    }
+  };
+
+  return { distanciaReal, rastrear, pararRastreio };
 };
