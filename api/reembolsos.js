@@ -34,7 +34,7 @@ export default async function handler(req, res) {
     // 2. Enviar dados para o Dataverse
     // NOTA: Verifique se o Entity Set Name termina com 's' ou 'es' no Power Apps
     // Geralmente para 'viagens', o plural vira 'viagenses' ou permanece 'viagenss'
-    const entitySetName = "cr4a1_reembolsos_viagenss"; 
+    const entitySetName = "cr4a1_reembolsos_viagens"; 
 
     const dataverseResponse = await axios.post(
       `${ENV_URL}/api/data/v9.2/${entitySetName}`, 
