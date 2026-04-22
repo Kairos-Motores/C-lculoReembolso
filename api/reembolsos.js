@@ -1,13 +1,12 @@
 import axios from 'axios';
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+  if (req.method !== 'GET') return res.status(405).send('Method Not Allowed');
 
   const { TENANT_ID, CLIENT_ID, CLIENT_SECRET, ENV_URL } = process.env;
-  const dados = req.body;
 
   try {
-    // 1. Obter Token
+    // 1. Token de Acesso
     const tokenResponse = await axios.post(
       `https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token`,
       new URLSearchParams({
@@ -20,45 +19,36 @@ export default async function handler(req, res) {
 
     const token = tokenResponse.data.access_token;
 
-    /**
-     * IMPORTANTE: No Dataverse, o plural de "viagens" costuma ser "viagenses" 
-     * se o sistema seguiu a regra de plural automática.
-     * Tente 'cr4a1_reembolsos_viagenses'. Se der 404, tente 'cr4a1_reembolsos_viagens'.
-     */
+    // 2. Buscar dados (usando o mesmo Entity Set Name do POST)
+    // Usamos $orderby para trazer as mais recentes primeiro
     const entitySetName = "cr4a1_reembolsos_viagenses"; 
-
-    // 2. Enviar para Dataverse
-    const response = await axios.post(
-      `${ENV_URL}/api/data/v9.2/${entitySetName}`,
-      {
-        "cr4a1_rota": dados.rota,
-        "cr4a1_km_inicial": parseFloat(dados.kmInicio),
-        "cr4a1_km_final": parseFloat(dados.kmFim),
-        "cr4a1_km_percorrido": parseInt(dados.distanciaPercorrida),
-        "cr4a1_km_gps": parseFloat(dados.distanciaRealGps),
-        "cr4a1_valor_reembolso": parseFloat(dados.pagamento),
-        "cr4a1_combustivel": dados.combustivel ? parseFloat(dados.combustivel) : 0,
-        "cr4a1_data": new Date().toISOString().split('T')[0]
-      },
+    const response = await axios.get(
+      `${ENV_URL}/api/data/v9.2/${entitySetName}?$orderby=createdon desc`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=representation'
+          'Accept': 'application/json',
+          'Prefer': 'odata.include-annotations="*"'
         }
       }
     );
 
-    return res.status(201).json(response.data);
+    // 3. Mapear os nomes das colunas do Dataverse de volta para o formato do seu App
+    const viagensMapeadas = response.data.value.map(v => ({
+      id: v.cr4a1_reembolsos_viagensid, // ID único do Dataverse
+      data: new Date(v.cr4a1_data).toLocaleDateString('pt-BR'),
+      rota: v.cr4a1_rota,
+      combustivel: v.cr4a1_combustivel,
+      kmInicio: v.cr4a1_km_inicial,
+      kmFim: v.cr4a1_km_final,
+      distanciaPercorrida: v.cr4a1_km_percorrido,
+      distanciaRealGps: v.cr4a1_km_gps,
+      pagamento: v.cr4a1_valor_reembolso
+    }));
+
+    return res.status(200).json(viagensMapeadas);
 
   } catch (error) {
-    const errorDetail = error.response?.data || error.message;
-    console.error("ERRO NO DATAVERSE:", JSON.stringify(errorDetail, null, 2));
-    
-    return res.status(500).json({ 
-      success: false, 
-      message: errorDetail?.error?.message || "Erro de conexão",
-      debug: errorDetail 
-    });
+    return res.status(500).json({ error: error.message });
   }
 }

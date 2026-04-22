@@ -18,9 +18,26 @@ function App() {
   const { distanciaReal, rastrear } = useDistance();
   const TAXA = 0.65;
 
-  useEffect(() => {
-    localStorage.setItem('viagens_motorista', JSON.stringify(viagens));
-  }, [viagens]);
+ // Adicione este useEffect dentro da função App()
+useEffect(() => {
+  const carregarDados = async () => {
+    try {
+      const response = await fetch('/api/get_reembolsos');
+      if (!response.ok) throw new Error();
+      const dadosSincronizados = await response.json();
+      
+      if (dadosSincronizados.length > 0) {
+        setViagens(dadosSincronizados);
+        // Atualiza o cache local com os dados frescos do Dataverse
+        localStorage.setItem('viagens_motorista', JSON.stringify(dadosSincronizados));
+      }
+    } catch (error) {
+      toast.error("Trabalhando em modo Offline.");
+    }
+  };
+
+  carregarDados();
+}, []);
 
   const handleSalvar = async () => {
     const { kmInicio, kmFim, rota } = form;
