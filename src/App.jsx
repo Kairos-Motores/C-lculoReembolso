@@ -23,15 +23,17 @@ useEffect(() => {
   const carregarDados = async () => {
     try {
       const response = await fetch('/api/get_reembolsos');
-      if (!response.ok) throw new Error();
       const dadosSincronizados = await response.json();
       
-      if (dadosSincronizados.length > 0) {
+      if (response.ok && Array.isArray(dadosSincronizados)) {
         setViagens(dadosSincronizados);
-        // Atualiza o cache local com os dados frescos do Dataverse
         localStorage.setItem('viagens_motorista', JSON.stringify(dadosSincronizados));
+        toast.success("Dados sincronizados!", { icon: '🔄' });
+      } else {
+        throw new Error(dadosSincronizados.error || "Erro desconhecido");
       }
     } catch (error) {
+      console.error("Erro na carga inicial:", error);
       toast.error("Trabalhando em modo Offline.");
     }
   };
