@@ -6,6 +6,7 @@
   --primary: #2563eb;
   --secondary: #10b981;
   --stat-bg: #0f172a;
+  --input-bg: #ffffff;
 }
 
 :root[data-theme='dark'] {
@@ -16,58 +17,225 @@
   --primary: #60a5fa;
   --secondary: #34d399;
   --stat-bg: #1a1a1a;
+  --input-bg: #000000;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body { 
   background-color: var(--bg); 
   color: var(--text); 
-  font-family: system-ui, sans-serif; 
+  font-family: system-ui, -apple-system, sans-serif; 
   margin: 0; 
-  transition: all 0.3s ease; 
+  transition: background-color 0.3s ease;
+  line-height: 1.5;
 }
 
-.container { max-width: 500px; margin: 0 auto; padding: 15px; }
+.container { 
+  width: 100%;
+  max-width: 500px; 
+  margin: 0 auto; 
+  padding: 12px; 
+}
 
-/* Header & Stats */
-.header-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-.theme-toggle { background: var(--card); border: 1px solid var(--border); padding: 10px; border-radius: 50%; font-size: 1.2rem; cursor: pointer; }
+/* Header & Navigation */
+.header-nav { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  padding: 10px 5px;
+  margin-bottom: 15px; 
+}
 
-.stats-container { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 25px; }
-.stat-card { background: var(--stat-bg); color: white; padding: 15px; border-radius: 12px; display: flex; flex-direction: column; }
+.header-nav h1 { 
+  font-size: 1.5rem; 
+  margin: 0; 
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.theme-toggle { 
+  background: var(--card); 
+  border: 1px solid var(--border); 
+  width: 42px;
+  height: 42px;
+  border-radius: 50%; 
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem; 
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+/* Stats Dashboard */
+.stats-container { 
+  display: grid; 
+  grid-template-columns: 1fr 1fr; 
+  gap: 12px; 
+  margin-bottom: 20px; 
+}
+
+.stat-card { 
+  background: var(--stat-bg); 
+  color: white; 
+  padding: 15px; 
+  border-radius: 16px; 
+  display: flex; 
+  flex-direction: column;
+  justify-content: center;
+}
+
 .stat-card.mens { border-bottom: 4px solid var(--secondary); }
-.stat-card .label { font-size: 0.65rem; text-transform: uppercase; opacity: 0.7; letter-spacing: 1px; }
-.stat-card .value { font-size: 1.3rem; font-weight: bold; color: var(--secondary); }
 
-/* Card Form */
-.card { background: var(--card); padding: 20px; border-radius: 16px; border: 1px solid var(--border); display: flex; flex-direction: column; gap: 15px; }
-.input-group-row { display: flex; gap: 10px; }
-.input-group-row input { flex: 1; }
-input, select { background: var(--bg); color: var(--text); border: 1px solid var(--border); padding: 12px; border-radius: 10px; font-size: 16px; }
+.stat-card .label { 
+  font-size: 0.6rem; 
+  text-transform: uppercase; 
+  opacity: 0.8; 
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
 
-/* GPS Dynamic Section */
-.gps-section { background: var(--bg); border: 1px dashed var(--border); padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; }
-.gps-section.active { border: 1px solid var(--secondary); background: rgba(16, 185, 129, 0.05); }
-.btn-gps-start { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; width: 100%; }
-.btn-gps-stop { background: #ef4444; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; }
-.gps-live { font-weight: bold; color: var(--secondary); font-size: 1.1rem; }
+.stat-card .value { 
+  font-size: 1.15rem; 
+  font-weight: 800; 
+  color: var(--secondary); 
+  white-space: nowrap;
+}
 
-/* Buttons & History */
-.btn-save { background: var(--secondary); color: white; padding: 15px; border-radius: 10px; font-weight: bold; }
-.btn-export { background: var(--stat-bg); color: white; width: 100%; padding: 12px; border-radius: 10px; margin: 15px 0; }
+/* Card Form & Inputs */
+.card { 
+  background: var(--card); 
+  padding: 18px; 
+  border-radius: 20px; 
+  border: 1px solid var(--border); 
+  display: flex; 
+  flex-direction: column; 
+  gap: 12px; 
+  box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+}
+
+.card h3 { margin: 0 0 5px 0; font-size: 1.1rem; }
+
+.input-group-row { 
+  display: flex; 
+  gap: 10px; 
+}
+
+input, select { 
+  background: var(--input-bg); 
+  color: var(--text); 
+  border: 1px solid var(--border); 
+  padding: 14px; 
+  border-radius: 12px; 
+  font-size: 16px; /* Evita zoom no iOS */
+  width: 100%;
+  transition: border-color 0.2s;
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+/* GPS Section Refined */
+.gps-section { 
+  background: var(--bg); 
+  border: 1px dashed var(--border); 
+  padding: 12px; 
+  border-radius: 14px; 
+  display: flex; 
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+
+.gps-section.active { 
+  border: 1px solid var(--secondary); 
+  background: rgba(16, 185, 129, 0.08); 
+}
+
+.btn-gps-start, .btn-gps-stop { 
+  width: 100%;
+  padding: 12px; 
+  border-radius: 10px; 
+  font-weight: bold; 
+  border: none;
+  cursor: pointer;
+}
+
+.btn-gps-start { background: var(--primary); color: white; }
+.btn-gps-stop { background: #ef4444; color: white; }
+
+.gps-live { 
+  font-size: 1rem; 
+  color: var(--secondary); 
+  display: flex;
+  gap: 5px;
+}
+
+/* Actions & History */
+.btn-save { 
+  background: var(--secondary); 
+  color: white; 
+  padding: 16px; 
+  border-radius: 12px; 
+  font-weight: 800; 
+  font-size: 1rem;
+  border: none;
+  margin-top: 5px;
+}
+
+.btn-save:active { transform: scale(0.98); }
+
+.btn-export { 
+  background: var(--stat-bg); 
+  color: white; 
+  width: 100%; 
+  padding: 14px; 
+  border-radius: 12px; 
+  margin: 15px 0; 
+  border: none;
+  font-weight: bold;
+}
 
 .history-item { 
   background: var(--card); 
   border: 1px solid var(--border); 
-  padding: 15px; 
+  padding: 14px; 
   margin-bottom: 10px; 
-  border-radius: 12px; 
-  border-left: 5px solid var(--secondary); 
+  border-radius: 14px; 
+  border-left: 6px solid var(--secondary); 
   display: flex; 
   justify-content: space-between; 
   align-items: center; 
 }
 
-.animate-in { animation: slideDown 0.3s ease-out; }
-@keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+.info strong { display: block; font-size: 0.95rem; margin-bottom: 2px; }
+.info small { color: #888; font-size: 0.8rem; }
+.price strong { font-size: 1.05rem; color: var(--secondary); }
 
-@media (min-width: 768px) { .container { max-width: 800px; } .card { display: grid; grid-template-columns: 1fr 1fr; } .full-width, .gps-section, .btn-save, h3 { grid-column: span 2; } }
+/* Animations */
+.animate-in { animation: slideDown 0.3s ease-out; }
+@keyframes slideDown { 
+  from { opacity: 0; transform: translateY(-8px); } 
+  to { opacity: 1; transform: translateY(0); } 
+}
+
+/* Tablet & Desktop */
+@media (min-width: 768px) { 
+  .container { max-width: 800px; padding: 20px; } 
+  .card { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; } 
+  .full-width, .gps-section, .btn-save, h3 { grid-column: span 2; }
+  .gps-section { flex-direction: row; }
+  .btn-gps-stop { width: auto; }
+}
+
+/* Pequenos Smartphones */
+@media (max-width: 360px) {
+  .stat-card .value { font-size: 1rem; }
+  .header-nav h1 { font-size: 1.3rem; }
+}
