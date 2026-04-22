@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import { Toaster, toast } from 'react-hot-toast';
 import { useDistance } from './hooks/useDistance';
@@ -18,6 +18,7 @@ function App() {
   const { distanciaReal, rastrear } = useDistance();
   const TAXA = 0.65;
 
+  // Sincronização Inicial (Busca do Dataverse)
   useEffect(() => {
     const carregarDados = async () => {
       try {
@@ -28,21 +29,38 @@ function App() {
           setViagens(dadosSincronizados);
           localStorage.setItem('viagens_motorista', JSON.stringify(dadosSincronizados));
           toast.success("Dados sincronizados!", { icon: '🔄' });
-        } else {
-          throw new Error(dadosSincronizados.error || "Erro desconhecido");
         }
       } catch (error) {
-        console.error("Erro na carga inicial:", error);
-        toast.error("Trabalhando em modo Offline.");
+        console.error("Carga falhou, operando offline.");
       }
     };
     carregarDados();
   }, []);
 
+  // Persistência local contínua
+  useEffect(() => {
+    localStorage.setItem('viagens_motorista', JSON.stringify(viagens));
+  }, [viagens]);
+
+  // Filtro de Viagens
+  const viagensFiltradas = useMemo(() => {
+    return viagens.filter(v => {
+      const partesData = v.data.split('/');
+      const mesViagem = partesData[1]; 
+      const bateMes = filtroMes === "" || mesViagem === filtroMes.padStart(2, '0');
+      const bateRota = v.rota.toLowerCase().includes(filtroRota.toLowerCase());
+      return bateMes && bateRota;
+    });
+  }, [viagens, filtroMes, filtroRota]);
+
+  // Cálculo do Total Acumulado Dinâmico
+  const totalPagamento = useMemo(() => {
+    return viagensFiltradas.reduce((acc, v) => acc + parseFloat(v.pagamento), 0).toFixed(2);
+  }, [viagensFiltradas]);
+
   const handleSalvar = async () => {
-    const { kmInicio, kmFim, rota } = form;
+    const { rota, kmInicio, kmFim } = form;
     
-    // Rota é sempre obrigatória
     if (!rota) {
       toast.error("O nome da rota é obrigatório!");
       return;
@@ -50,7 +68,7 @@ function App() {
 
     let distanciaFinal = 0;
 
-    // Lógica Flexível: Prioridade Hodômetro > GPS
+    // Lógica Flexível: Hodômetro Prioritário ou GPS como Backup
     if (kmInicio && kmFim) {
       const diff = parseFloat(kmFim) - parseFloat(kmInicio);
       if (diff <= 0) {
@@ -62,7 +80,7 @@ function App() {
       distanciaFinal = Math.ceil(distanciaReal);
       toast.success("Usando distância do GPS.");
     } else {
-      toast.error("Insira os KMs do hodômetro ou ative o rastreio GPS!");
+      toast.error("Preencha os KMs ou use o rastreio GPS!");
       return;
     }
 
@@ -81,7 +99,7 @@ function App() {
     };
 
     setEnviando(true);
-    const idToast = toast.loading("Sincronizando com Dataverse...");
+    const idToast = toast.loading("Sincronizando...");
 
     try {
       const response = await fetch('/api/reembolsos', {
@@ -92,43 +110,27 @@ function App() {
 
       if (!response.ok) throw new Error();
 
-      // Ao salvar com sucesso, atualizamos a lista local com o que veio do banco (opcionalmente)
-      // Aqui apenas adicionamos à lista local para feedback imediato
       setViagens([novaViagem, ...viagens]);
       setForm({ rota: '', combustivel: '', kmInicio: '', kmFim: '' });
-      toast.success(`Salvo! Reembolso: R$ ${valorPagamento}`, { id: idToast, icon: '✅' });
+      toast.success(`Salvo! R$ ${valorPagamento}`, { id: idToast, icon: '✅' });
     } catch (error) {
       setViagens([novaViagem, ...viagens]);
-      toast.error("Erro no Dataverse. Salvo localmente.", { id: idToast });
+      toast.error("Erro no Dataverse. Salvo apenas localmente.", { id: idToast });
     } finally {
       setEnviando(false);
     }
   };
 
-  const viagensFiltradas = viagens.filter(v => {
-    const partesData = v.data.split('/');
-    if (partesData.length < 2) return true;
-    const mesViagem = partesData[1]; 
-    const bateMes = filtroMes === "" || mesViagem === filtroMes.padStart(2, '0');
-    const bateRota = v.rota.toLowerCase().includes(filtroRota.toLowerCase());
-    return bateMes && bateRota;
-  });
-
   const exportar = () => {
-    const total = viagensFiltradas.length;
-    if (total === 0) {
-      toast.error("Não há dados para exportar.");
+    if (viagensFiltradas.length === 0) {
+      toast.error("Sem dados para exportar.");
       return;
     }
-
     const ws = XLSX.utils.json_to_sheet(viagensFiltradas);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Reembolsos");
-
-    const nomeMes = filtroMes ? new Date(0, filtroMes - 1).toLocaleString('pt-BR', { month: 'long' }) : 'Geral';
-    XLSX.writeFile(wb, `Reembolso_${nomeMes}_${new Date().getFullYear()}.xlsx`);
-    
-    toast.success(`Planilha gerada com ${total} ${total === 1 ? 'linha' : 'linhas'}!`, { icon: '📊' });
+    XLSX.writeFile(wb, `Reembolso_${new Date().getTime()}.xlsx`);
+    toast.success("Planilha gerada!", { icon: '📊' });
   };
 
   return (
@@ -137,15 +139,18 @@ function App() {
 
       <header>
         <h1>Calc Reembolso</h1>
-        <p>Valor por KM: <strong>R$ {TAXA.toFixed(2)}</strong> (Arredondado ↑)</p>
+        <div className="total-box">
+          <span className="label">Total Acumulado</span>
+          <span className="value">R$ {totalPagamento}</span>
+        </div>
       </header>
 
       <div className="card">
-        <h3>Registrar Percurso</h3>
+        <h3>Nova Viagem</h3>
         <input className="full-width" type="text" placeholder="Nome da Rota" value={form.rota}
           onChange={e => setForm({...form, rota: e.target.value})} />
         
-        <input className="full-width" type="number" inputMode="decimal" placeholder="Preço Combustível" 
+        <input className="full-width" type="number" inputMode="decimal" placeholder="Preço do Combustível" 
           value={form.combustivel} onChange={e => setForm({...form, combustivel: e.target.value})} />
 
         <div className="input-group-row">
@@ -156,17 +161,16 @@ function App() {
         </div>
         
         <div className="gps-box">
-          <button onClick={() => { rastrear(); toast('Rastreio Iniciado!', { icon: '📍' }); }} className="btn-gps">📡 Ativar GPS</button>
-          <span>GPS Real: <strong>{distanciaReal.toFixed(2)} km</strong></span>
+          <button onClick={() => { rastrear(); toast('GPS Ativado!', { icon: '📍' }); }} className="btn-gps">📡 Ativar GPS</button>
+          <span>GPS: <strong>{distanciaReal.toFixed(2)} km</strong></span>
         </div>
 
         <button onClick={handleSalvar} disabled={enviando} className="btn-save">
-          {enviando ? "Sincronizando..." : "💾 Salvar Viagem"}
+          {enviando ? "Enviando..." : "💾 Salvar e Sincronizar"}
         </button>
       </div>
 
       <div className="filters-section">
-        <h3>Filtros</h3>
         <div className="filter-group">
           <select value={filtroMes} onChange={(e) => setFiltroMes(e.target.value)}>
             <option value="">Todos os Meses</option>
@@ -179,29 +183,23 @@ function App() {
       </div>
 
       <div className="actions">
-        <button onClick={exportar} className="btn-export" disabled={viagensFiltradas.length === 0}>
-          📊 Exportar Seleção <span className="badge-count">{viagensFiltradas.length}</span>
+        <button onClick={exportar} className="btn-export">
+          📊 Exportar Seleção <span className="badge">{viagensFiltradas.length}</span>
         </button>
       </div>
 
       <div className="history">
-        <h3>
-          {filtroMes ? `Viagens de ${new Date(0, filtroMes - 1).toLocaleString('pt-BR', { month: 'long' })}` : 'Histórico Geral'}
-          <small> ({viagensFiltradas.length})</small>
-        </h3>
         {viagensFiltradas.map(v => (
           <div key={v.id} className="history-item">
             <div className="info">
               <strong>{v.rota}</strong>
-              <small>{v.data} | {v.kmInicio > 0 ? `${v.kmInicio}km → ${v.kmFim}km` : `GPS: ${v.distanciaRealGps}km`}</small>
+              <small>{v.data} | {v.distanciaPercorrida}km (Arredondado)</small>
             </div>
             <div className="price">
-              <span>{v.distanciaPercorrida}km</span>
               <strong>R$ {v.pagamento}</strong>
             </div>
           </div>
         ))}
-        {viagensFiltradas.length === 0 && <p className="empty-msg">Nenhum registro encontrado.</p>}
       </div>
     </div>
   );
