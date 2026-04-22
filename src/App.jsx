@@ -140,7 +140,7 @@ function App() {
       
       <header>
         <div className="header-nav">
-          <h1>Calc Reembolso</h1>
+          <h1>Cálculo Reembolso</h1>
           <button onClick={() => setIsDarkMode(!isDarkMode)} className="theme-toggle">
             {isDarkMode ? '☀️' : '🌙'}
           </button>
