@@ -41,28 +41,41 @@ function App() {
 
   const handleSalvar = async () => {
     const { kmInicio, kmFim, rota } = form;
-    if (!kmInicio || !kmFim || !rota) {
-      toast.error("Preencha todos os campos obrigatórios!");
+    
+    // Rota é sempre obrigatória
+    if (!rota) {
+      toast.error("O nome da rota é obrigatório!");
       return;
     }
 
-    const diff = parseFloat(kmFim) - parseFloat(kmInicio);
-    if (diff <= 0) {
-      toast.error("KM final deve ser maior que o inicial!");
+    let distanciaFinal = 0;
+
+    // Lógica Flexível: Prioridade Hodômetro > GPS
+    if (kmInicio && kmFim) {
+      const diff = parseFloat(kmFim) - parseFloat(kmInicio);
+      if (diff <= 0) {
+        toast.error("KM final deve ser maior que o inicial!");
+        return;
+      }
+      distanciaFinal = Math.ceil(diff);
+    } else if (distanciaReal > 0) {
+      distanciaFinal = Math.ceil(distanciaReal);
+      toast.success("Usando distância do GPS.");
+    } else {
+      toast.error("Insira os KMs do hodômetro ou ative o rastreio GPS!");
       return;
     }
 
-    const distanciaCalculada = Math.ceil(diff);
-    const valorPagamento = (distanciaCalculada * TAXA).toFixed(2);
+    const valorPagamento = (distanciaFinal * TAXA).toFixed(2);
 
     const novaViagem = {
       id: Date.now(),
       data: new Date().toLocaleDateString('pt-BR'),
       rota,
-      combustivel: form.combustivel,
-      kmInicio: parseFloat(kmInicio),
-      kmFim: parseFloat(kmFim),
-      distanciaPercorrida: distanciaCalculada,
+      combustivel: form.combustivel || 0,
+      kmInicio: kmInicio ? parseFloat(kmInicio) : 0,
+      kmFim: kmFim ? parseFloat(kmFim) : 0,
+      distanciaPercorrida: distanciaFinal,
       distanciaRealGps: distanciaReal.toFixed(2),
       pagamento: valorPagamento
     };
@@ -79,6 +92,8 @@ function App() {
 
       if (!response.ok) throw new Error();
 
+      // Ao salvar com sucesso, atualizamos a lista local com o que veio do banco (opcionalmente)
+      // Aqui apenas adicionamos à lista local para feedback imediato
       setViagens([novaViagem, ...viagens]);
       setForm({ rota: '', combustivel: '', kmInicio: '', kmFim: '' });
       toast.success(`Salvo! Reembolso: R$ ${valorPagamento}`, { id: idToast, icon: '✅' });
@@ -91,7 +106,9 @@ function App() {
   };
 
   const viagensFiltradas = viagens.filter(v => {
-    const mesViagem = v.data.split('/')[1]; 
+    const partesData = v.data.split('/');
+    if (partesData.length < 2) return true;
+    const mesViagem = partesData[1]; 
     const bateMes = filtroMes === "" || mesViagem === filtroMes.padStart(2, '0');
     const bateRota = v.rota.toLowerCase().includes(filtroRota.toLowerCase());
     return bateMes && bateRota;
@@ -139,12 +156,12 @@ function App() {
         </div>
         
         <div className="gps-box">
-          <button onClick={() => { rastrear(); toast('GPS Ativado!', { icon: '📍' }); }} className="btn-gps">📡 Validar GPS</button>
-          <span>GPS: <strong>{distanciaReal.toFixed(2)} km</strong></span>
+          <button onClick={() => { rastrear(); toast('Rastreio Iniciado!', { icon: '📍' }); }} className="btn-gps">📡 Ativar GPS</button>
+          <span>GPS Real: <strong>{distanciaReal.toFixed(2)} km</strong></span>
         </div>
 
         <button onClick={handleSalvar} disabled={enviando} className="btn-save">
-          {enviando ? "Enviando..." : "💾 Salvar e Sincronizar"}
+          {enviando ? "Sincronizando..." : "💾 Salvar Viagem"}
         </button>
       </div>
 
@@ -176,7 +193,7 @@ function App() {
           <div key={v.id} className="history-item">
             <div className="info">
               <strong>{v.rota}</strong>
-              <small>{v.data} | {v.kmInicio}km → {v.kmFim}km</small>
+              <small>{v.data} | {v.kmInicio > 0 ? `${v.kmInicio}km → ${v.kmFim}km` : `GPS: ${v.distanciaRealGps}km`}</small>
             </div>
             <div className="price">
               <span>{v.distanciaPercorrida}km</span>
