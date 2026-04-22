@@ -18,32 +18,29 @@ function App() {
   const { distanciaReal, rastrear } = useDistance();
   const TAXA = 0.65;
 
- // Adicione este useEffect dentro da função App()
-useEffect(() => {
-  const carregarDados = async () => {
-    try {
-      const response = await fetch('/api/get_reembolsos');
-      const dadosSincronizados = await response.json();
-      
-      if (response.ok && Array.isArray(dadosSincronizados)) {
-        setViagens(dadosSincronizados);
-        localStorage.setItem('viagens_motorista', JSON.stringify(dadosSincronizados));
-        toast.success("Dados sincronizados!", { icon: '🔄' });
-      } else {
-        throw new Error(dadosSincronizados.error || "Erro desconhecido");
+  useEffect(() => {
+    const carregarDados = async () => {
+      try {
+        const response = await fetch('/api/get_reembolsos');
+        const dadosSincronizados = await response.json();
+        
+        if (response.ok && Array.isArray(dadosSincronizados)) {
+          setViagens(dadosSincronizados);
+          localStorage.setItem('viagens_motorista', JSON.stringify(dadosSincronizados));
+          toast.success("Dados sincronizados!", { icon: '🔄' });
+        } else {
+          throw new Error(dadosSincronizados.error || "Erro desconhecido");
+        }
+      } catch (error) {
+        console.error("Erro na carga inicial:", error);
+        toast.error("Trabalhando em modo Offline.");
       }
-    } catch (error) {
-      console.error("Erro na carga inicial:", error);
-      toast.error("Trabalhando em modo Offline.");
-    }
-  };
-
-  carregarDados();
-}, []);
+    };
+    carregarDados();
+  }, []);
 
   const handleSalvar = async () => {
     const { kmInicio, kmFim, rota } = form;
-    
     if (!kmInicio || !kmFim || !rota) {
       toast.error("Preencha todos os campos obrigatórios!");
       return;
@@ -74,7 +71,6 @@ useEffect(() => {
     const idToast = toast.loading("Sincronizando com Dataverse...");
 
     try {
-      // Chamada para a Serverless Function da Vercel
       const response = await fetch('/api/reembolsos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -85,26 +81,13 @@ useEffect(() => {
 
       setViagens([novaViagem, ...viagens]);
       setForm({ rota: '', combustivel: '', kmInicio: '', kmFim: '' });
-      toast.success("Salvo no Dataverse!", { id: idToast, icon: '✅' });
+      toast.success(`Salvo! Reembolso: R$ ${valorPagamento}`, { id: idToast, icon: '✅' });
     } catch (error) {
-      // Se falhar a rede, salvamos localmente para não perder o dado
       setViagens([novaViagem, ...viagens]);
-      toast.error("Erro no Dataverse. Salvo apenas localmente.", { id: idToast });
+      toast.error("Erro no Dataverse. Salvo localmente.", { id: idToast });
     } finally {
       setEnviando(false);
     }
-  };
-
-  const exportar = () => {
-    if (viagensFiltradas.length === 0) {
-      toast.error("Não há dados para exportar.");
-      return;
-    }
-    const ws = XLSX.utils.json_to_sheet(viagensFiltradas);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Reembolsos");
-    XLSX.writeFile(wb, `Relatorio_${new Date().getTime()}.xlsx`);
-    toast.success("Planilha gerada!", { icon: '📊' });
   };
 
   const viagensFiltradas = viagens.filter(v => {
@@ -114,13 +97,30 @@ useEffect(() => {
     return bateMes && bateRota;
   });
 
+  const exportar = () => {
+    const total = viagensFiltradas.length;
+    if (total === 0) {
+      toast.error("Não há dados para exportar.");
+      return;
+    }
+
+    const ws = XLSX.utils.json_to_sheet(viagensFiltradas);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Reembolsos");
+
+    const nomeMes = filtroMes ? new Date(0, filtroMes - 1).toLocaleString('pt-BR', { month: 'long' }) : 'Geral';
+    XLSX.writeFile(wb, `Reembolso_${nomeMes}_${new Date().getFullYear()}.xlsx`);
+    
+    toast.success(`Planilha gerada com ${total} ${total === 1 ? 'linha' : 'linhas'}!`, { icon: '📊' });
+  };
+
   return (
     <div className="container">
       <Toaster position="top-center" />
 
       <header>
         <h1>Calc Reembolso</h1>
-        <p>Valor por KM: <strong>R$ {TAXA.toFixed(2)}</strong></p>
+        <p>Valor por KM: <strong>R$ {TAXA.toFixed(2)}</strong> (Arredondado ↑)</p>
       </header>
 
       <div className="card">
@@ -149,8 +149,9 @@ useEffect(() => {
       </div>
 
       <div className="filters-section">
+        <h3>Filtros</h3>
         <div className="filter-group">
-          <select onChange={(e) => setFiltroMes(e.target.value)}>
+          <select value={filtroMes} onChange={(e) => setFiltroMes(e.target.value)}>
             <option value="">Todos os Meses</option>
             {[...Array(12)].map((_, i) => (
               <option key={i+1} value={i+1}>{new Date(0, i).toLocaleString('pt-BR', { month: 'long' })}</option>
@@ -161,10 +162,16 @@ useEffect(() => {
       </div>
 
       <div className="actions">
-        <button onClick={exportar} className="btn-export">📊 Exportar ({viagensFiltradas.length})</button>
+        <button onClick={exportar} className="btn-export" disabled={viagensFiltradas.length === 0}>
+          📊 Exportar Seleção <span className="badge-count">{viagensFiltradas.length}</span>
+        </button>
       </div>
 
       <div className="history">
+        <h3>
+          {filtroMes ? `Viagens de ${new Date(0, filtroMes - 1).toLocaleString('pt-BR', { month: 'long' })}` : 'Histórico Geral'}
+          <small> ({viagensFiltradas.length})</small>
+        </h3>
         {viagensFiltradas.map(v => (
           <div key={v.id} className="history-item">
             <div className="info">
@@ -177,6 +184,7 @@ useEffect(() => {
             </div>
           </div>
         ))}
+        {viagensFiltradas.length === 0 && <p className="empty-msg">Nenhum registro encontrado.</p>}
       </div>
     </div>
   );
