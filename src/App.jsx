@@ -136,14 +136,41 @@ function App() {
         <Toaster position="top-center" />
         <form className="login-card" onSubmit={handleLogin}>
           <div className="login-header">
-            <h2>Calc Reembolso</h2>
-            <p>Faça login para continuar</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+              <div style={{ textAlign: 'left' }}>
+                <h2>Calc Reembolso</h2>
+                <p>Faça login para continuar</p>
+              </div>
+              {/* Botão de Tema na Tela de Login */}
+              <button 
+                type="button" 
+                onClick={() => setIsDarkMode(!isDarkMode)} 
+                className="theme-toggle"
+                style={{ width: '38px', height: '38px', fontSize: '1rem' }}
+              >
+                {isDarkMode ? '☀️' : '🌙'}
+              </button>
+            </div>
           </div>
+          
           <div className="login-inputs">
-            <input type="text" placeholder="Usuário" required onChange={e => setLoginForm({...loginForm, usuario: e.target.value})} />
-            <input type="password" placeholder="Senha" required onChange={e => setLoginForm({...loginForm, senha: e.target.value})} />
+            <input 
+              type="text" 
+              placeholder="Usuário" 
+              required 
+              onChange={e => setLoginForm({...loginForm, usuario: e.target.value})} 
+            />
+            <input 
+              type="password" 
+              placeholder="Senha (Matrícula)" 
+              required 
+              onChange={e => setLoginForm({...loginForm, senha: e.target.value})} 
+            />
           </div>
-          <button className="btn-save" type="submit" disabled={enviando}>{enviando ? "Acessando..." : "Entrar"}</button>
+
+          <button className="btn-save" type="submit" disabled={enviando}>
+            {enviando ? "Acessando..." : "Entrar"}
+          </button>
         </form>
       </div>
     );

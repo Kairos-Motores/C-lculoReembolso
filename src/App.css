@@ -245,6 +245,11 @@ input:focus {
   align-items: center;
   justify-content: center;
   padding: 20px;
+  box-sizing: border-box;
+  /* Garante que o fundo da tela mude com o tema */
+  background-color: var(--bg); 
+  color: var(--text);
+  transition: background-color 0.3s ease;
 }
 
 .login-card {
@@ -260,9 +265,27 @@ input:focus {
   border: 1px solid var(--border);
 }
 
-.login-header { text-align: center; }
-.login-header h2 { color: var(--primary); margin: 0; font-size: 1.8rem; }
-.login-header p { margin: 5px 0 0 0; font-size: 0.9rem; opacity: 0.6; }
+.login-header h2 {
+  color: var(--primary);
+  margin: 0;
+  font-size: 1.8rem;
+}
+
+.login-header {
+  text-align: center;
+}
+
+.login-header h2 {
+  color: var(--primary);
+  margin: 0;
+  font-size: 1.8rem;
+}
+
+.login-header p {
+  margin: 5px 0 0 0;
+  font-size: 0.9rem;
+  opacity: 0.6;
+}
 
 .login-inputs {
   display: flex;
@@ -270,9 +293,14 @@ input:focus {
   gap: 15px;
 }
 
+/* Força os inputs a respeitarem os limites do card */
 .login-card input {
   width: 100%;
   box-sizing: border-box;
+}
+
+.login-card .btn-save {
+  width: 100%;
 }
 
 /* Animations */
