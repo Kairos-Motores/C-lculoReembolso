@@ -3,10 +3,10 @@ import axios from 'axios';
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).send('Method Not Allowed');
 
+  const { acesso, usuario } = req.query;
   const { TENANT_ID, CLIENT_ID, CLIENT_SECRET, ENV_URL } = process.env;
 
   try {
-    // 1. Token
     const tokenResponse = await axios.post(
       `https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token`,
       new URLSearchParams({
@@ -19,11 +19,15 @@ export default async function handler(req, res) {
 
     const token = tokenResponse.data.access_token;
 
-    // 2. Buscar dados 
-    // DICA: Tente remover o $orderby temporariamente se continuar dando erro 500
+    // Lógica de Hierarquia: Motorista vê apenas o dele, Gestor vê tudo
+    let filter = "";
+    if (acesso === 'Motorista') {
+      filter = `?$filter=cr4a1_criado_por eq '${usuario}'`;
+    }
+
     const entitySetName = "cr4a1_reembolsos_viagenses"; 
     const response = await axios.get(
-      `${ENV_URL}/api/data/v9.2/${entitySetName}`,
+      `${ENV_URL}/api/data/v9.2/${entitySetName}${filter}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -34,7 +38,6 @@ export default async function handler(req, res) {
       }
     );
 
-    // 3. Mapear (Verifique se os nomes das colunas cr4a1_... estão corretos)
     const viagensMapeadas = response.data.value.map(v => ({
       id: v.cr4a1_reembolsos_viagensid, 
       data: v.cr4a1_data ? new Date(v.cr4a1_data).toLocaleDateString('pt-BR') : 'Sem data',
@@ -44,16 +47,12 @@ export default async function handler(req, res) {
       kmFim: v.cr4a1_km_final || 0,
       distanciaPercorrida: v.cr4a1_km_percorrido || 0,
       distanciaRealGps: v.cr4a1_km_gps || 0,
-      pagamento: v.cr4a1_valor_reembolso || 0
+      pagamento: v.cr4a1_valor_reembolso || 0,
+      criadoPor: v.cr4a1_criado_por || 'N/A'
     }));
 
     return res.status(200).json(viagensMapeadas);
-
   } catch (error) {
-    console.error("ERRO GET DATAVERSE:", error.response?.data || error.message);
-    return res.status(500).json({ 
-      error: "Falha ao buscar dados", 
-      details: error.response?.data || error.message 
-    });
+    return res.status(500).json({ error: error.message });
   }
 }
