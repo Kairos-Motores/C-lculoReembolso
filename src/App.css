@@ -71,7 +71,7 @@ body {
   box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
-/* Stats Dashboard */
+/* Stats Dashboard - Total e Total Mensal */
 .stats-container { 
   display: grid; 
   grid-template-columns: 1fr 1fr; 
@@ -87,9 +87,13 @@ body {
   display: flex; 
   flex-direction: column;
   justify-content: center;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 
-.stat-card.mens { border-bottom: 4px solid var(--secondary); }
+/* Destaque para o Total Pessoal do Mês */
+.stat-card.mens { 
+  border-bottom: 4px solid var(--secondary); 
+}
 
 .stat-card .label { 
   font-size: 0.6rem; 
@@ -100,7 +104,7 @@ body {
 }
 
 .stat-card .value { 
-  font-size: 1.15rem; 
+  font-size: 1.1rem; 
   font-weight: 800; 
   color: var(--secondary); 
   white-space: nowrap;
@@ -131,7 +135,7 @@ input, select {
   border: 1px solid var(--border); 
   padding: 14px; 
   border-radius: 12px; 
-  font-size: 16px; /* Evita zoom no iOS */
+  font-size: 16px; 
   width: 100%;
   transition: border-color 0.2s;
 }
@@ -141,15 +145,15 @@ input:focus {
   border-color: var(--primary);
 }
 
-/* GPS Section Refined */
+/* GPS Section - Estilização dos Botões Corrigida */
 .gps-section { 
   background: var(--bg); 
   border: 1px dashed var(--border); 
-  padding: 12px; 
+  padding: 15px; 
   border-radius: 14px; 
   display: flex; 
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
 }
 
@@ -160,18 +164,31 @@ input:focus {
 
 .btn-gps-start, .btn-gps-stop { 
   width: 100%;
-  padding: 12px; 
-  border-radius: 10px; 
+  padding: 14px; 
+  border-radius: 12px; 
   font-weight: bold; 
   border: none;
   cursor: pointer;
+  font-size: 1rem;
+  transition: opacity 0.2s, transform 0.1s;
 }
 
-.btn-gps-start { background: var(--primary); color: white; }
-.btn-gps-stop { background: #ef4444; color: white; }
+.btn-gps-start:active, .btn-gps-stop:active {
+  transform: scale(0.98);
+}
+
+.btn-gps-start { 
+  background: var(--primary); 
+  color: white; 
+}
+
+.btn-gps-stop { 
+  background: #ef4444; 
+  color: white; 
+}
 
 .gps-live { 
-  font-size: 1rem; 
+  font-size: 1.2rem; 
   color: var(--secondary); 
   display: flex;
   gap: 5px;
@@ -187,6 +204,7 @@ input:focus {
   font-size: 1rem;
   border: none;
   margin-top: 5px;
+  cursor: pointer;
 }
 
 .btn-save:active { transform: scale(0.98); }
@@ -200,6 +218,7 @@ input:focus {
   margin: 15px 0; 
   border: none;
   font-weight: bold;
+  cursor: pointer;
 }
 
 .history-item { 
@@ -218,7 +237,7 @@ input:focus {
 .info small { color: #888; font-size: 0.8rem; }
 .price strong { font-size: 1.05rem; color: var(--secondary); }
 
-/* Ajustes para a Tela de Login */
+/* Tela de Login */
 .login-screen {
   height: 100vh;
   width: 100%;
@@ -226,7 +245,6 @@ input:focus {
   align-items: center;
   justify-content: center;
   padding: 20px;
-  box-sizing: border-box;
 }
 
 .login-card {
@@ -242,21 +260,9 @@ input:focus {
   border: 1px solid var(--border);
 }
 
-.login-header {
-  text-align: center;
-}
-
-.login-header h2 {
-  color: var(--primary);
-  margin: 0;
-  font-size: 1.8rem;
-}
-
-.login-header p {
-  margin: 5px 0 0 0;
-  font-size: 0.9rem;
-  opacity: 0.6;
-}
+.login-header { text-align: center; }
+.login-header h2 { color: var(--primary); margin: 0; font-size: 1.8rem; }
+.login-header p { margin: 5px 0 0 0; font-size: 0.9rem; opacity: 0.6; }
 
 .login-inputs {
   display: flex;
@@ -264,14 +270,9 @@ input:focus {
   gap: 15px;
 }
 
-/* Força os inputs a respeitarem os limites do card */
 .login-card input {
   width: 100%;
   box-sizing: border-box;
-}
-
-.login-card .btn-save {
-  width: 100%;
 }
 
 /* Animations */

@@ -5,7 +5,6 @@ import { useDistance } from './hooks/useDistance';
 import './App.css';
 
 function App() {
-  // Estado de Autenticação
   const [user, setUser] = useState(() => {
     const salvo = localStorage.getItem('user_reembolso');
     return salvo ? JSON.parse(salvo) : null;
@@ -31,11 +30,8 @@ function App() {
     document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
   }, [isDarkMode]);
 
-  // Carregar dados específicos do nível de acesso
   useEffect(() => {
-    if (user) {
-      carregarDados();
-    }
+    if (user) carregarDados();
   }, [user]);
 
   const carregarDados = async () => {
@@ -60,15 +56,13 @@ function App() {
       if (response.ok) {
         setUser(dados);
         localStorage.setItem('user_reembolso', JSON.stringify(dados));
-        toast.success(`Bem-vindo, ${dados.usuario}!`, { id: idToast });
+        toast.success(`Bem-vindo!`, { id: idToast });
       } else {
         toast.error(dados.message || "Credenciais inválidas", { id: idToast });
       }
     } catch (e) { 
       toast.error("Erro de conexão.", { id: idToast }); 
-    } finally {
-      setEnviando(false);
-    }
+    } finally { setEnviando(false); }
   };
 
   const handleLogout = () => {
@@ -80,6 +74,13 @@ function App() {
   const totalGeral = useMemo(() => 
     viagens.reduce((acc, v) => acc + parseFloat(v.pagamento), 0).toFixed(2)
   , [viagens]);
+
+  const totalMensal = useMemo(() => {
+    const mesAtual = (new Date().getMonth() + 1).toString().padStart(2, '0');
+    return viagens
+      .filter(v => v.data.split('/')[1] === mesAtual)
+      .reduce((acc, v) => acc + parseFloat(v.pagamento), 0).toFixed(2);
+  }, [viagens]);
 
   const viagensFiltradas = useMemo(() => {
     return viagens.filter(v => {
@@ -129,7 +130,6 @@ function App() {
     finally { setEnviando(false); }
   };
 
-  // TELA DE LOGIN CORRIGIDA
   if (!user) {
     return (
       <div className="login-screen">
@@ -139,25 +139,11 @@ function App() {
             <h2>Calc Reembolso</h2>
             <p>Faça login para continuar</p>
           </div>
-          
           <div className="login-inputs">
-            <input 
-              type="text" 
-              placeholder="Usuário" 
-              required 
-              onChange={e => setLoginForm({...loginForm, usuario: e.target.value})} 
-            />
-            <input 
-              type="password" 
-              placeholder="Senha (Matrícula)" 
-              required 
-              onChange={e => setLoginForm({...loginForm, senha: e.target.value})} 
-            />
+            <input type="text" placeholder="Usuário" required onChange={e => setLoginForm({...loginForm, usuario: e.target.value})} />
+            <input type="password" placeholder="Senha" required onChange={e => setLoginForm({...loginForm, senha: e.target.value})} />
           </div>
-
-          <button className="btn-save" type="submit" disabled={enviando}>
-            {enviando ? "Acessando..." : "Entrar"}
-          </button>
+          <button className="btn-save" type="submit" disabled={enviando}>{enviando ? "Acessando..." : "Entrar"}</button>
         </form>
       </div>
     );
@@ -175,8 +161,12 @@ function App() {
       </header>
 
       <div className="stats-container">
+        <div className="stat-card mens">
+          <span className="label">Total Mensal</span>
+          <span className="value">R$ {totalMensal}</span>
+        </div>
         <div className="stat-card">
-          <span className="label">Total {user.acesso === 'Gestor' ? 'Global' : 'Pessoal'}</span>
+          <span className="label">{user.acesso === 'Gestor' ? 'Total Geral' : 'Total Acumulado'}</span>
           <span className="value">R$ {totalGeral}</span>
         </div>
       </div>
@@ -192,12 +182,16 @@ function App() {
             </div>
           )}
           <div className={`gps-section ${gpsAtivo ? 'active' : ''}`}>
-            <button onClick={() => { if(!gpsAtivo) { rastrear(); setGpsAtivo(true); } else { pararRastreio(); setGpsAtivo(false); } }}>
+            <button 
+              type="button"
+              className={gpsAtivo ? 'btn-gps-stop' : 'btn-gps-start'}
+              onClick={() => { if(!gpsAtivo) { rastrear(); setGpsAtivo(true); } else { pararRastreio(); setGpsAtivo(false); } }}
+            >
               {gpsAtivo ? '🛑 Parar GPS' : '📍 Usar GPS'}
             </button>
-            {gpsAtivo && <span className="gps-live">{distanciaReal.toFixed(2)} km</span>}
+            {gpsAtivo && <span className="gps-live"><strong>{distanciaReal.toFixed(2)} km</strong></span>}
           </div>
-          <button onClick={handleSalvar} disabled={enviando} className="btn-save">Salvar</button>
+          <button onClick={handleSalvar} disabled={enviando} className="btn-save">💾 Salvar Viagem</button>
         </div>
       )}
 
@@ -207,7 +201,7 @@ function App() {
             <option value="">Todos os Meses</option>
             {[...Array(12)].map((_, i) => (<option key={i+1} value={i+1}>{new Date(0, i).toLocaleString('pt-BR', { month: 'long' })}</option>))}
           </select>
-          <input type="text" placeholder={user.acesso === 'Gestor' ? "Buscar motorista ou rota..." : "Filtrar rota..."} onChange={e => setFiltroRota(e.target.value)} />
+          <input type="text" placeholder="Filtrar..." onChange={e => setFiltroRota(e.target.value)} />
         </div>
       </div>
 
@@ -215,8 +209,8 @@ function App() {
         const ws = XLSX.utils.json_to_sheet(viagensFiltradas);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Reembolsos");
-        XLSX.writeFile(wb, `Relatorio_Reembolso_${new Date().getTime()}.xlsx`);
-      }} className="btn-export">Exportar Seleção ({viagensFiltradas.length})</button>
+        XLSX.writeFile(wb, "Relatorio.xlsx");
+      }} className="btn-export">📊 Exportar ({viagensFiltradas.length})</button>
 
       <div className="history">
         {viagensFiltradas.map(v => (
