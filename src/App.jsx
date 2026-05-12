@@ -12,7 +12,15 @@ function App() {
 
   const [loginForm, setLoginForm] = useState({ usuario: '', senha: '' });
   const [viagens, setViagens] = useState([]);
-  const [form, setForm] = useState({ rota: '', combustivel: '', kmInicio: '', kmFim: '' });
+  const [form, setForm] = useState({ 
+    rota: '', 
+    combustivel: '', 
+    kmInicio: '', 
+    kmFim: '',
+    pedagio: '',
+    outrosGastos: '',
+    outrosDescricao: ''
+  });
   const [filtroMes, setFiltroMes] = useState('');
   const [filtroRota, setFiltroRota] = useState('');
   const [enviando, setEnviando] = useState(false);
@@ -93,8 +101,13 @@ function App() {
   }, [viagens, filtroMes, filtroRota]);
 
   const handleSalvar = async () => {
-    const { rota, kmInicio, kmFim } = form;
+    const { rota, kmInicio, kmFim, pedagio, outrosGastos, outrosDescricao } = form;
     if (!rota) return toast.error("Informe a rota!");
+
+    // Validação de Descrição Obrigatória
+    if (parseFloat(outrosGastos) > 0 && !outrosDescricao.trim()) {
+      return toast.error("Descreva o motivo dos outros gastos!");
+    }
 
     let distanciaFinal = 0;
     if (!gpsAtivo && kmInicio && kmFim) {
@@ -105,12 +118,16 @@ function App() {
       return toast.error("Use o GPS ou preencha o KM!");
     }
 
-    const valor = (distanciaFinal * TAXA).toFixed(2);
+    // Cálculo Total: (KM * TAXA) + Pedágio + Outros
+    const valorKM = distanciaFinal * TAXA;
+    const extras = parseFloat(pedagio || 0) + parseFloat(outrosGastos || 0);
+    const valorTotal = (valorKM + extras).toFixed(2);
+
     const novaViagem = {
       ...form,
       distanciaPercorrida: distanciaFinal,
       distanciaRealGps: distanciaReal.toFixed(2),
-      pagamento: valor,
+      pagamento: valorTotal,
       criadoPor: user.usuario,
       data: new Date().toLocaleDateString('pt-BR')
     };
@@ -123,9 +140,9 @@ function App() {
         body: JSON.stringify(novaViagem)
       });
       setViagens([novaViagem, ...viagens]);
-      setForm({ rota: '', combustivel: '', kmInicio: '', kmFim: '' });
+      setForm({ rota: '', combustivel: '', kmInicio: '', kmFim: '', pedagio: '', outrosGastos: '', outrosDescricao: '' });
       if (gpsAtivo) { pararRastreio(); setGpsAtivo(false); }
-      toast.success("Salvo!");
+      toast.success(`Salvo! Total R$ ${valorTotal}`);
     } catch (e) { toast.error("Erro ao salvar."); }
     finally { setEnviando(false); }
   };
@@ -141,7 +158,6 @@ function App() {
                 <h2>Calc Reembolso</h2>
                 <p>Faça login para continuar</p>
               </div>
-              {/* Botão de Tema na Tela de Login */}
               <button 
                 type="button" 
                 onClick={() => setIsDarkMode(!isDarkMode)} 
@@ -152,25 +168,11 @@ function App() {
               </button>
             </div>
           </div>
-          
           <div className="login-inputs">
-            <input 
-              type="text" 
-              placeholder="Usuário" 
-              required 
-              onChange={e => setLoginForm({...loginForm, usuario: e.target.value})} 
-            />
-            <input 
-              type="password" 
-              placeholder="Senha (Matrícula)" 
-              required 
-              onChange={e => setLoginForm({...loginForm, senha: e.target.value})} 
-            />
+            <input type="text" placeholder="Usuário" required onChange={e => setLoginForm({...loginForm, usuario: e.target.value})} />
+            <input type="password" placeholder="Senha (Matrícula)" required onChange={e => setLoginForm({...loginForm, senha: e.target.value})} />
           </div>
-
-          <button className="btn-save" type="submit" disabled={enviando}>
-            {enviando ? "Acessando..." : "Entrar"}
-          </button>
+          <button className="btn-save" type="submit" disabled={enviando}>{enviando ? "Acessando..." : "Entrar"}</button>
         </form>
       </div>
     );
@@ -202,12 +204,29 @@ function App() {
         <div className="card">
           <h3>Nova Viagem</h3>
           <input className="full-width" type="text" placeholder="Nome da Rota" value={form.rota} onChange={e => setForm({...form, rota: e.target.value})} />
+          
+          <div className="input-group-row">
+            <input type="number" inputMode="decimal" placeholder="Pedágio (R$)" value={form.pedagio} onChange={e => setForm({...form, pedagio: e.target.value})} />
+            <input type="number" inputMode="decimal" placeholder="Outros (R$)" value={form.outrosGastos} onChange={e => setForm({...form, outrosGastos: e.target.value})} />
+          </div>
+
+          {parseFloat(form.outrosGastos) > 0 && (
+            <input 
+              className="full-width animate-in" 
+              type="text" 
+              placeholder="Descrição do gasto extra" 
+              value={form.outrosDescricao} 
+              onChange={e => setForm({...form, outrosDescricao: e.target.value})} 
+            />
+          )}
+
           {!gpsAtivo && (
-            <div className="input-group-row">
+            <div className="input-group-row animate-in">
               <input type="number" placeholder="KM Inicial" value={form.kmInicio} onChange={e => setForm({...form, kmInicio: e.target.value})} />
               <input type="number" placeholder="KM Final" value={form.kmFim} onChange={e => setForm({...form, kmFim: e.target.value})} />
             </div>
           )}
+          
           <div className={`gps-section ${gpsAtivo ? 'active' : ''}`}>
             <button 
               type="button"
@@ -236,7 +255,7 @@ function App() {
         const ws = XLSX.utils.json_to_sheet(viagensFiltradas);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Reembolsos");
-        XLSX.writeFile(wb, "Relatorio.xlsx");
+        XLSX.writeFile(wb, `Relatorio_${new Date().getTime()}.xlsx`);
       }} className="btn-export">📊 Exportar ({viagensFiltradas.length})</button>
 
       <div className="history">
@@ -245,6 +264,12 @@ function App() {
             <div className="info">
               <strong>{v.rota}</strong>
               <small>{v.data} | {v.distanciaPercorrida}km {user.acesso === 'Gestor' && `| Por: ${v.criadoPor}`}</small>
+              {(v.pedagio > 0 || v.outrosGastos > 0) && (
+                <small style={{display: 'block', color: 'var(--secondary)'}}>
+                  Extras: R$ {(parseFloat(v.pedagio || 0) + parseFloat(v.outrosGastos || 0)).toFixed(2)} 
+                  {v.outrosDescricao && ` (${v.outrosDescricao})`}
+                </small>
+              )}
             </div>
             <div className="price"><strong>R$ {v.pagamento}</strong></div>
           </div>

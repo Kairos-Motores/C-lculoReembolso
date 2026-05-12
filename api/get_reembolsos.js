@@ -25,7 +25,7 @@ export default async function handler(req, res) {
       filter = `?$filter=cr4a1_criado_por eq '${usuario}'`;
     }
 
-    const entitySetName = "cr4a1_reembolsos_viagenses"; 
+    const entitySetName = "cr4a1_reembolsos_viagenses";
     const response = await axios.get(
       `${ENV_URL}/api/data/v9.2/${entitySetName}${filter}`,
       {
@@ -39,7 +39,7 @@ export default async function handler(req, res) {
     );
 
     const viagensMapeadas = response.data.value.map(v => ({
-      id: v.cr4a1_reembolsos_viagensid, 
+      id: v.cr4a1_reembolsos_viagensid,
       data: v.cr4a1_data ? new Date(v.cr4a1_data).toLocaleDateString('pt-BR') : 'Sem data',
       rota: v.cr4a1_rota || 'Rota não informada',
       combustivel: v.cr4a1_combustivel || 0,
@@ -48,6 +48,9 @@ export default async function handler(req, res) {
       distanciaPercorrida: v.cr4a1_km_percorrido || 0,
       distanciaRealGps: v.cr4a1_km_gps || 0,
       pagamento: v.cr4a1_valor_reembolso || 0,
+      pedagio: v.cr4a1_pedagio || 0, // Novo Campo
+      outrosGastos: v.cr4a1_outros_gastos || 0, // Novo Campo
+      outrosDescricao: v.cr4a1_outros_descricao || "", // Novo Campo
       criadoPor: v.cr4a1_criado_por || 'N/A'
     }));
 

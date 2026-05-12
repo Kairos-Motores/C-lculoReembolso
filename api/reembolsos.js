@@ -30,14 +30,17 @@ export default async function handler(req, res) {
       `${ENV_URL}/api/data/v9.2/${entitySetName}`, 
       {
         cr4a1_rota: dados.rota,
-        cr4a1_km_inicial: parseFloat(dados.kmInicio),
-        cr4a1_km_final: parseFloat(dados.kmFim),
+        cr4a1_km_inicial: parseFloat(dados.kmInicio || 0),
+        cr4a1_km_final: parseFloat(dados.kmFim || 0),
         cr4a1_km_percorrido: parseInt(dados.distanciaPercorrida),
         cr4a1_km_gps: parseFloat(dados.distanciaRealGps),
         cr4a1_valor_reembolso: parseFloat(dados.pagamento),
         cr4a1_combustivel: dados.combustivel ? parseFloat(dados.combustivel) : 0,
+        cr4a1_pedagio: parseFloat(dados.pedagio || 0), // Nova Coluna
+        cr4a1_outros_gastos: parseFloat(dados.outrosGastos || 0), // Nova Coluna
+        cr4a1_outros_descricao: dados.outrosDescricao || "", // Nova Coluna
         cr4a1_data: new Date().toISOString().split('T')[0],
-        cr4a1_criado_por: dados.criadoPor // Nova coluna de vínculo
+        cr4a1_criado_por: dados.criadoPor
       },
       { headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' } }
     );
