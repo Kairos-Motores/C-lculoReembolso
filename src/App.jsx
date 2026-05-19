@@ -4,6 +4,17 @@ import { Toaster, toast } from 'react-hot-toast';
 import { useDistance } from './hooks/useDistance';
 import './App.css';
 
+// Função auxiliar para calcular o período de pagamento (21 até 20)
+const getPeriodoCompetencia = (dateStr) => {
+  const [d, m, y] = dateStr.split('/').map(Number);
+  // Se dia >= 21, pertence ao mês atual (m). Se <= 20, pertence ao anterior (m-1).
+  if (d >= 21) return { month: m, year: y };
+  let prevM = m - 1;
+  let prevY = y;
+  if (prevM === 0) { prevM = 12; prevY = y - 1; }
+  return { month: prevM, year: prevY };
+};
+
 function App() {
   const [user, setUser] = useState(() => {
     const salvo = localStorage.getItem('user_reembolso');
@@ -13,13 +24,8 @@ function App() {
   const [loginForm, setLoginForm] = useState({ usuario: '', senha: '' });
   const [viagens, setViagens] = useState([]);
   const [form, setForm] = useState({ 
-    rota: '', 
-    combustivel: '', 
-    kmInicio: '', 
-    kmFim: '',
-    pedagio: '',
-    outrosGastos: '',
-    outrosDescricao: ''
+    rota: '', combustivel: '', kmInicio: '', kmFim: '', 
+    pedagio: '', outrosGastos: '', outrosDescricao: '' 
   });
   const [filtroMes, setFiltroMes] = useState('');
   const [filtroRota, setFiltroRota] = useState('');
@@ -80,16 +86,14 @@ function App() {
     setViagens([]);
   };
 
-  // Extrai lista única de motoristas para o filtro do gestor
   const listaMotoristas = useMemo(() => {
     return [...new Set(viagens.map(v => v.criadoPor))].filter(Boolean);
   }, [viagens]);
 
   const viagensFiltradas = useMemo(() => {
     return viagens.filter(v => {
-      const partesData = v.data.split('/');
-      const mesViagem = partesData[1]; 
-      const bateMes = filtroMes === "" || mesViagem === filtroMes.padStart(2, '0');
+      const { month, year } = getPeriodoCompetencia(v.data);
+      const bateMes = filtroMes === "" || month.toString().padStart(2, '0') === filtroMes.padStart(2, '0');
       const bateRota = v.rota.toLowerCase().includes(filtroRota.toLowerCase());
       const bateMotorista = filtroMotorista === "" || v.criadoPor === filtroMotorista;
       return bateMes && bateRota && bateMotorista;
@@ -101,17 +105,19 @@ function App() {
   , [viagensFiltradas]);
 
   const totalMensal = useMemo(() => {
-    const mesAtual = (new Date().getMonth() + 1).toString().padStart(2, '0');
+    const hoje = new Date();
+    const mesAtual = (hoje.getMonth() + 1).toString().padStart(2, '0');
     return viagensFiltradas
-      .filter(v => v.data.split('/')[1] === mesAtual)
+      .filter(v => {
+        const { month } = getPeriodoCompetencia(v.data);
+        return month.toString().padStart(2, '0') === mesAtual;
+      })
       .reduce((acc, v) => acc + parseFloat(v.pagamento), 0).toFixed(2);
   }, [viagensFiltradas]);
 
   const handleSalvar = async () => {
     const { rota, kmInicio, kmFim, pedagio, outrosGastos, outrosDescricao } = form;
     if (!rota) return toast.error("Informe a rota!");
-
-    // Validação de descrição obrigatória
     if (parseFloat(outrosGastos || 0) > 0 && !outrosDescricao.trim()) {
       return toast.error("Descreva o motivo dos outros gastos!");
     }
@@ -125,9 +131,7 @@ function App() {
       return toast.error("Use o GPS ou preencha o KM!");
     }
 
-    const valorKM = distanciaFinal * TAXA;
-    const extras = parseFloat(pedagio || 0) + parseFloat(outrosGastos || 0);
-    const valorTotal = (valorKM + extras).toFixed(2);
+    const valorTotal = (distanciaFinal * TAXA + parseFloat(pedagio || 0) + parseFloat(outrosGastos || 0)).toFixed(2);
 
     const novaViagem = {
       ...form,
@@ -205,23 +209,19 @@ function App() {
         <div className="card">
           <h3>Nova Viagem</h3>
           <input className="full-width" type="text" placeholder="Nome da Rota" value={form.rota} onChange={e => setForm({...form, rota: e.target.value})} />
-          
           <div className="input-group-row">
             <input type="number" inputMode="decimal" placeholder="Pedágio (R$)" value={form.pedagio} onChange={e => setForm({...form, pedagio: e.target.value})} />
             <input type="number" inputMode="decimal" placeholder="Outros (R$)" value={form.outrosGastos} onChange={e => setForm({...form, outrosGastos: e.target.value})} />
           </div>
-
           {parseFloat(form.outrosGastos) > 0 && (
             <input className="full-width animate-in" type="text" placeholder="Descrição do gasto extra" value={form.outrosDescricao} onChange={e => setForm({...form, outrosDescricao: e.target.value})} />
           )}
-
           {!gpsAtivo && (
             <div className="input-group-row animate-in">
               <input type="number" placeholder="KM Inicial" value={form.kmInicio} onChange={e => setForm({...form, kmInicio: e.target.value})} />
               <input type="number" placeholder="KM Final" value={form.kmFim} onChange={e => setForm({...form, kmFim: e.target.value})} />
             </div>
           )}
-          
           <div className={`gps-section ${gpsAtivo ? 'active' : ''}`}>
             <button type="button" className={gpsAtivo ? 'btn-gps-stop' : 'btn-gps-start'} onClick={() => { if(!gpsAtivo) { rastrear(); setGpsAtivo(true); } else { pararRastreio(); setGpsAtivo(false); } }}>
               {gpsAtivo ? '🛑 Parar GPS' : '📍 Usar GPS'}
@@ -238,14 +238,12 @@ function App() {
             <option value="">Todos os Meses</option>
             {[...Array(12)].map((_, i) => (<option key={i+1} value={i+1}>{new Date(0, i).toLocaleString('pt-BR', { month: 'long' })}</option>))}
           </select>
-
           {user.acesso === 'Gestor' && (
             <select value={filtroMotorista} onChange={e => setFiltroMotorista(e.target.value)}>
-              <option value="">Motoristas</option>
+              <option value="">Todos Motoristas</option>
               {listaMotoristas.map(m => (<option key={m} value={m}>{m}</option>))}
             </select>
           )}
-
           <input type="text" placeholder="Filtrar..." onChange={e => setFiltroRota(e.target.value)} />
         </div>
       </div>
