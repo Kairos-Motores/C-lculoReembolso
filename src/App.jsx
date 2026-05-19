@@ -92,7 +92,7 @@ function App() {
 
   const viagensFiltradas = useMemo(() => {
     return viagens.filter(v => {
-      const { month, year } = getPeriodoCompetencia(v.data);
+      const { month } = getPeriodoCompetencia(v.data);
       const bateMes = filtroMes === "" || month.toString().padStart(2, '0') === filtroMes.padStart(2, '0');
       const bateRota = v.rota.toLowerCase().includes(filtroRota.toLowerCase());
       const bateMotorista = filtroMotorista === "" || v.criadoPor === filtroMotorista;
@@ -205,6 +205,13 @@ function App() {
         </div>
       </div>
 
+      {/* Informativo de Lógica */}
+      <div className="card" style={{ marginBottom: '15px', padding: '10px', backgroundColor: 'var(--card-bg)', borderLeft: '4px solid var(--primary)' }}>
+        <small style={{ color: 'var(--text-secondary)' }}>
+          ℹ️ <b>Regra de Pagamento:</b> O mês de competência considera o período do <b>dia 21 do mês anterior ao dia 20 do mês atual</b>.
+        </small>
+      </div>
+
       {user.acesso === 'Motorista' && (
         <div className="card">
           <h3>Nova Viagem</h3>
@@ -256,21 +263,27 @@ function App() {
       }} className="btn-export">📊 Exportar ({viagensFiltradas.length})</button>
 
       <div className="history">
-        {viagensFiltradas.map(v => (
-          <div key={v.id} className="history-item">
-            <div className="info">
-              <strong>{v.rota}</strong>
-              <small>{v.data} | {v.distanciaPercorrida}km {user.acesso === 'Gestor' && `| Por: ${v.criadoPor}`}</small>
-              {(parseFloat(v.pedagio || 0) > 0 || parseFloat(v.outrosGastos || 0) > 0) && (
-                <small style={{display: 'block', color: 'var(--secondary)'}}>
-                  Extras: R$ {(parseFloat(v.pedagio || 0) + parseFloat(v.outrosGastos || 0)).toFixed(2)} 
-                  {v.outrosDescricao && ` (${v.outrosDescricao})`}
+        {viagensFiltradas.map(v => {
+          const { month, year } = getPeriodoCompetencia(v.data);
+          return (
+            <div key={v.id} className="history-item">
+              <div className="info">
+                <strong>{v.rota}</strong>
+                <small>
+                  {v.data} | Comp: {month.toString().padStart(2, '0')}/{year} | {v.distanciaPercorrida}km 
+                  {user.acesso === 'Gestor' && ` | Por: ${v.criadoPor}`}
                 </small>
-              )}
+                {(parseFloat(v.pedagio || 0) > 0 || parseFloat(v.outrosGastos || 0) > 0) && (
+                  <small style={{display: 'block', color: 'var(--secondary)'}}>
+                    Extras: R$ {(parseFloat(v.pedagio || 0) + parseFloat(v.outrosGastos || 0)).toFixed(2)} 
+                    {v.outrosDescricao && ` (${v.outrosDescricao})`}
+                  </small>
+                )}
+              </div>
+              <div className="price"><strong>R$ {v.pagamento}</strong></div>
             </div>
-            <div className="price"><strong>R$ {v.pagamento}</strong></div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
