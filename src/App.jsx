@@ -23,6 +23,7 @@ function App() {
   });
   const [filtroMes, setFiltroMes] = useState('');
   const [filtroRota, setFiltroRota] = useState('');
+  const [filtroMotorista, setFiltroMotorista] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [gpsAtivo, setGpsAtivo] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -79,15 +80,9 @@ function App() {
     setViagens([]);
   };
 
-  const totalGeral = useMemo(() => 
-    viagens.reduce((acc, v) => acc + parseFloat(v.pagamento), 0).toFixed(2)
-  , [viagens]);
-
-  const totalMensal = useMemo(() => {
-    const mesAtual = (new Date().getMonth() + 1).toString().padStart(2, '0');
-    return viagens
-      .filter(v => v.data.split('/')[1] === mesAtual)
-      .reduce((acc, v) => acc + parseFloat(v.pagamento), 0).toFixed(2);
+  // Extrai lista única de motoristas para o filtro do gestor
+  const listaMotoristas = useMemo(() => {
+    return [...new Set(viagens.map(v => v.criadoPor))].filter(Boolean);
   }, [viagens]);
 
   const viagensFiltradas = useMemo(() => {
@@ -96,16 +91,28 @@ function App() {
       const mesViagem = partesData[1]; 
       const bateMes = filtroMes === "" || mesViagem === filtroMes.padStart(2, '0');
       const bateRota = v.rota.toLowerCase().includes(filtroRota.toLowerCase());
-      return bateMes && bateRota;
+      const bateMotorista = filtroMotorista === "" || v.criadoPor === filtroMotorista;
+      return bateMes && bateRota && bateMotorista;
     });
-  }, [viagens, filtroMes, filtroRota]);
+  }, [viagens, filtroMes, filtroRota, filtroMotorista]);
+
+  const totalGeral = useMemo(() => 
+    viagensFiltradas.reduce((acc, v) => acc + parseFloat(v.pagamento), 0).toFixed(2)
+  , [viagensFiltradas]);
+
+  const totalMensal = useMemo(() => {
+    const mesAtual = (new Date().getMonth() + 1).toString().padStart(2, '0');
+    return viagensFiltradas
+      .filter(v => v.data.split('/')[1] === mesAtual)
+      .reduce((acc, v) => acc + parseFloat(v.pagamento), 0).toFixed(2);
+  }, [viagensFiltradas]);
 
   const handleSalvar = async () => {
     const { rota, kmInicio, kmFim, pedagio, outrosGastos, outrosDescricao } = form;
     if (!rota) return toast.error("Informe a rota!");
 
-    // Validação de Descrição Obrigatória
-    if (parseFloat(outrosGastos) > 0 && !outrosDescricao.trim()) {
+    // Validação de descrição obrigatória
+    if (parseFloat(outrosGastos || 0) > 0 && !outrosDescricao.trim()) {
       return toast.error("Descreva o motivo dos outros gastos!");
     }
 
@@ -118,7 +125,6 @@ function App() {
       return toast.error("Use o GPS ou preencha o KM!");
     }
 
-    // Cálculo Total: (KM * TAXA) + Pedágio + Outros
     const valorKM = distanciaFinal * TAXA;
     const extras = parseFloat(pedagio || 0) + parseFloat(outrosGastos || 0);
     const valorTotal = (valorKM + extras).toFixed(2);
@@ -158,12 +164,7 @@ function App() {
                 <h2>Calc Reembolso</h2>
                 <p>Faça login para continuar</p>
               </div>
-              <button 
-                type="button" 
-                onClick={() => setIsDarkMode(!isDarkMode)} 
-                className="theme-toggle"
-                style={{ width: '38px', height: '38px', fontSize: '1rem' }}
-              >
+              <button type="button" onClick={() => setIsDarkMode(!isDarkMode)} className="theme-toggle" style={{ width: '38px', height: '38px', fontSize: '1rem' }}>
                 {isDarkMode ? '☀️' : '🌙'}
               </button>
             </div>
@@ -211,13 +212,7 @@ function App() {
           </div>
 
           {parseFloat(form.outrosGastos) > 0 && (
-            <input 
-              className="full-width animate-in" 
-              type="text" 
-              placeholder="Descrição do gasto extra" 
-              value={form.outrosDescricao} 
-              onChange={e => setForm({...form, outrosDescricao: e.target.value})} 
-            />
+            <input className="full-width animate-in" type="text" placeholder="Descrição do gasto extra" value={form.outrosDescricao} onChange={e => setForm({...form, outrosDescricao: e.target.value})} />
           )}
 
           {!gpsAtivo && (
@@ -228,11 +223,7 @@ function App() {
           )}
           
           <div className={`gps-section ${gpsAtivo ? 'active' : ''}`}>
-            <button 
-              type="button"
-              className={gpsAtivo ? 'btn-gps-stop' : 'btn-gps-start'}
-              onClick={() => { if(!gpsAtivo) { rastrear(); setGpsAtivo(true); } else { pararRastreio(); setGpsAtivo(false); } }}
-            >
+            <button type="button" className={gpsAtivo ? 'btn-gps-stop' : 'btn-gps-start'} onClick={() => { if(!gpsAtivo) { rastrear(); setGpsAtivo(true); } else { pararRastreio(); setGpsAtivo(false); } }}>
               {gpsAtivo ? '🛑 Parar GPS' : '📍 Usar GPS'}
             </button>
             {gpsAtivo && <span className="gps-live"><strong>{distanciaReal.toFixed(2)} km</strong></span>}
@@ -242,11 +233,19 @@ function App() {
       )}
 
       <div className="filters-section">
-        <div className="filter-group">
+        <div className="filter-group" style={{ display: 'grid', gridTemplateColumns: user.acesso === 'Gestor' ? '1fr 1fr 1fr' : '1fr 1fr', gap: '8px' }}>
           <select value={filtroMes} onChange={e => setFiltroMes(e.target.value)}>
             <option value="">Todos os Meses</option>
             {[...Array(12)].map((_, i) => (<option key={i+1} value={i+1}>{new Date(0, i).toLocaleString('pt-BR', { month: 'long' })}</option>))}
           </select>
+
+          {user.acesso === 'Gestor' && (
+            <select value={filtroMotorista} onChange={e => setFiltroMotorista(e.target.value)}>
+              <option value="">Motoristas</option>
+              {listaMotoristas.map(m => (<option key={m} value={m}>{m}</option>))}
+            </select>
+          )}
+
           <input type="text" placeholder="Filtrar..." onChange={e => setFiltroRota(e.target.value)} />
         </div>
       </div>
@@ -264,7 +263,7 @@ function App() {
             <div className="info">
               <strong>{v.rota}</strong>
               <small>{v.data} | {v.distanciaPercorrida}km {user.acesso === 'Gestor' && `| Por: ${v.criadoPor}`}</small>
-              {(v.pedagio > 0 || v.outrosGastos > 0) && (
+              {(parseFloat(v.pedagio || 0) > 0 || parseFloat(v.outrosGastos || 0) > 0) && (
                 <small style={{display: 'block', color: 'var(--secondary)'}}>
                   Extras: R$ {(parseFloat(v.pedagio || 0) + parseFloat(v.outrosGastos || 0)).toFixed(2)} 
                   {v.outrosDescricao && ` (${v.outrosDescricao})`}
