@@ -119,6 +119,7 @@ function App() {
       })
       .reduce((acc, v) => acc + parseFloat(v.pagamento || 0), 0)
       .toFixed(2);
+      console.log("Viagens filtradas:", viagensFiltradas)
   }, [viagensFiltradas]);
 
   const handleSalvar = async () => {
