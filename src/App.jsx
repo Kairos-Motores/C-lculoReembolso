@@ -5,14 +5,25 @@ import { useDistance } from './hooks/useDistance';
 import './App.css';
 
 // Função auxiliar para calcular o período de pagamento (21 até 20)
+// Função auxiliar para calcular o período de pagamento (21 até 20)
 const getPeriodoCompetencia = (dateStr) => {
   const [d, m, y] = dateStr.split('/').map(Number);
-  // Se dia >= 21, pertence ao mês atual (m). Se <= 20, pertence ao anterior (m-1).
-  if (d >= 21) return { month: m, year: y };
-  let prevM = m - 1;
-  let prevY = y;
-  if (prevM === 0) { prevM = 12; prevY = y - 1; }
-  return { month: prevM, year: prevY };
+
+  // Regra:
+  // Se dia >= 21, o mês de pagamento é o MÊS SEGUINTE.
+  // Se dia <= 20, o mês de pagamento é o MÊS ATUAL.
+  let mesCompetencia = m;
+  let anoCompetencia = y;
+
+  if (d >= 21) {
+    mesCompetencia = m + 1;
+    if (mesCompetencia > 12) {
+      mesCompetencia = 1;
+      anoCompetencia = y + 1;
+    }
+  }
+
+  return { month: mesCompetencia, year: anoCompetencia };
 };
 
 function App() {
