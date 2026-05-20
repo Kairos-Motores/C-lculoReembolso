@@ -23,9 +23,9 @@ function App() {
 
   const [loginForm, setLoginForm] = useState({ usuario: '', senha: '' });
   const [viagens, setViagens] = useState([]);
-  const [form, setForm] = useState({ 
-    rota: '', combustivel: '', kmInicio: '', kmFim: '', 
-    pedagio: '', outrosGastos: '', outrosDescricao: '' 
+  const [form, setForm] = useState({
+    rota: '', combustivel: '', kmInicio: '', kmFim: '',
+    pedagio: '', outrosGastos: '', outrosDescricao: ''
   });
   const [filtroMes, setFiltroMes] = useState('');
   const [filtroRota, setFiltroRota] = useState('');
@@ -75,8 +75,8 @@ function App() {
       } else {
         toast.error(dados.message || "Credenciais inválidas", { id: idToast });
       }
-    } catch (e) { 
-      toast.error("Erro de conexão.", { id: idToast }); 
+    } catch (e) {
+      toast.error("Erro de conexão.", { id: idToast });
     } finally { setEnviando(false); }
   };
 
@@ -100,13 +100,15 @@ function App() {
     });
   }, [viagens, filtroMes, filtroRota, filtroMotorista]);
 
-  const totalGeral = useMemo(() => 
+  const totalGeral = useMemo(() =>
     viagensFiltradas.reduce((acc, v) => acc + parseFloat(v.pagamento), 0).toFixed(2)
-  , [viagensFiltradas]);
+    , [viagensFiltradas]);
 
   const totalMensal = useMemo(() => {
     const hoje = new Date();
+    // Pega o mês atual (0-11, por isso +1)
     const mesAtual = (hoje.getMonth() + 1).toString().padStart(2, '0');
+
     return viagensFiltradas
       .filter(v => {
         const { month } = getPeriodoCompetencia(v.data);
@@ -174,8 +176,8 @@ function App() {
             </div>
           </div>
           <div className="login-inputs">
-            <input type="text" placeholder="Usuário" required onChange={e => setLoginForm({...loginForm, usuario: e.target.value})} />
-            <input type="password" placeholder="Senha (Matrícula)" required onChange={e => setLoginForm({...loginForm, senha: e.target.value})} />
+            <input type="text" placeholder="Usuário" required onChange={e => setLoginForm({ ...loginForm, usuario: e.target.value })} />
+            <input type="password" placeholder="Senha (Matrícula)" required onChange={e => setLoginForm({ ...loginForm, senha: e.target.value })} />
           </div>
           <button className="btn-save" type="submit" disabled={enviando}>{enviando ? "Acessando..." : "Entrar"}</button>
         </form>
@@ -188,7 +190,7 @@ function App() {
       <Toaster position="top-center" />
       <header className="header-nav">
         <h1>{user.acesso === 'Gestor' ? 'Painel Gestor' : 'Minhas Viagens'}</h1>
-        <div style={{display: 'flex', gap: '10px'}}>
+        <div style={{ display: 'flex', gap: '10px' }}>
           <button onClick={() => setIsDarkMode(!isDarkMode)} className="theme-toggle">{isDarkMode ? '☀️' : '🌙'}</button>
           <button onClick={handleLogout} className="theme-toggle">🚪</button>
         </div>
@@ -215,22 +217,22 @@ function App() {
       {user.acesso === 'Motorista' && (
         <div className="card">
           <h3>Nova Viagem</h3>
-          <input className="full-width" type="text" placeholder="Nome da Rota" value={form.rota} onChange={e => setForm({...form, rota: e.target.value})} />
+          <input className="full-width" type="text" placeholder="Nome da Rota" value={form.rota} onChange={e => setForm({ ...form, rota: e.target.value })} />
           <div className="input-group-row">
-            <input type="number" inputMode="decimal" placeholder="Pedágio (R$)" value={form.pedagio} onChange={e => setForm({...form, pedagio: e.target.value})} />
-            <input type="number" inputMode="decimal" placeholder="Outros (R$)" value={form.outrosGastos} onChange={e => setForm({...form, outrosGastos: e.target.value})} />
+            <input type="number" inputMode="decimal" placeholder="Pedágio (R$)" value={form.pedagio} onChange={e => setForm({ ...form, pedagio: e.target.value })} />
+            <input type="number" inputMode="decimal" placeholder="Outros (R$)" value={form.outrosGastos} onChange={e => setForm({ ...form, outrosGastos: e.target.value })} />
           </div>
           {parseFloat(form.outrosGastos) > 0 && (
-            <input className="full-width animate-in" type="text" placeholder="Descrição do gasto extra" value={form.outrosDescricao} onChange={e => setForm({...form, outrosDescricao: e.target.value})} />
+            <input className="full-width animate-in" type="text" placeholder="Descrição do gasto extra" value={form.outrosDescricao} onChange={e => setForm({ ...form, outrosDescricao: e.target.value })} />
           )}
           {!gpsAtivo && (
             <div className="input-group-row animate-in">
-              <input type="number" placeholder="KM Inicial" value={form.kmInicio} onChange={e => setForm({...form, kmInicio: e.target.value})} />
-              <input type="number" placeholder="KM Final" value={form.kmFim} onChange={e => setForm({...form, kmFim: e.target.value})} />
+              <input type="number" placeholder="KM Inicial" value={form.kmInicio} onChange={e => setForm({ ...form, kmInicio: e.target.value })} />
+              <input type="number" placeholder="KM Final" value={form.kmFim} onChange={e => setForm({ ...form, kmFim: e.target.value })} />
             </div>
           )}
           <div className={`gps-section ${gpsAtivo ? 'active' : ''}`}>
-            <button type="button" className={gpsAtivo ? 'btn-gps-stop' : 'btn-gps-start'} onClick={() => { if(!gpsAtivo) { rastrear(); setGpsAtivo(true); } else { pararRastreio(); setGpsAtivo(false); } }}>
+            <button type="button" className={gpsAtivo ? 'btn-gps-stop' : 'btn-gps-start'} onClick={() => { if (!gpsAtivo) { rastrear(); setGpsAtivo(true); } else { pararRastreio(); setGpsAtivo(false); } }}>
               {gpsAtivo ? '🛑 Parar GPS' : '📍 Usar GPS'}
             </button>
             {gpsAtivo && <span className="gps-live"><strong>{distanciaReal.toFixed(2)} km</strong></span>}
@@ -243,7 +245,7 @@ function App() {
         <div className="filter-group" style={{ display: 'grid', gridTemplateColumns: user.acesso === 'Gestor' ? '1fr 1fr 1fr' : '1fr 1fr', gap: '8px' }}>
           <select value={filtroMes} onChange={e => setFiltroMes(e.target.value)}>
             <option value="">Todos os Meses</option>
-            {[...Array(12)].map((_, i) => (<option key={i+1} value={i+1}>{new Date(0, i).toLocaleString('pt-BR', { month: 'long' })}</option>))}
+            {[...Array(12)].map((_, i) => (<option key={i + 1} value={i + 1}>{new Date(0, i).toLocaleString('pt-BR', { month: 'long' })}</option>))}
           </select>
           {user.acesso === 'Gestor' && (
             <select value={filtroMotorista} onChange={e => setFiltroMotorista(e.target.value)}>
@@ -270,12 +272,12 @@ function App() {
               <div className="info">
                 <strong>{v.rota}</strong>
                 <small>
-                  {v.data} | Comp: {month.toString().padStart(2, '0')}/{year} | {v.distanciaPercorrida}km 
+                  {v.data} | Comp: {month.toString().padStart(2, '0')}/{year} | {v.distanciaPercorrida}km
                   {user.acesso === 'Gestor' && ` | Por: ${v.criadoPor}`}
                 </small>
                 {(parseFloat(v.pedagio || 0) > 0 || parseFloat(v.outrosGastos || 0) > 0) && (
-                  <small style={{display: 'block', color: 'var(--secondary)'}}>
-                    Extras: R$ {(parseFloat(v.pedagio || 0) + parseFloat(v.outrosGastos || 0)).toFixed(2)} 
+                  <small style={{ display: 'block', color: 'var(--secondary)' }}>
+                    Extras: R$ {(parseFloat(v.pedagio || 0) + parseFloat(v.outrosGastos || 0)).toFixed(2)}
                     {v.outrosDescricao && ` (${v.outrosDescricao})`}
                   </small>
                 )}
