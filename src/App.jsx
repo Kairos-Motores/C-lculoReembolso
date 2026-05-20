@@ -4,14 +4,12 @@ import { Toaster, toast } from 'react-hot-toast';
 import { useDistance } from './hooks/useDistance';
 import './App.css';
 
-// Função auxiliar para calcular o período de pagamento (21 até 20)
-// Função auxiliar para calcular o período de pagamento (21 até 20)
 const getPeriodoCompetencia = (dateStr) => {
   const [d, m, y] = dateStr.split('/').map(Number);
-
+  
   // Regra:
-  // Se dia >= 21, o mês de pagamento é o MÊS SEGUINTE.
-  // Se dia <= 20, o mês de pagamento é o MÊS ATUAL.
+  // Até dia 20 -> Pertence ao mês atual (m).
+  // Dia 21 em diante -> Pertence ao mês seguinte (m + 1).
   let mesCompetencia = m;
   let anoCompetencia = y;
 
@@ -22,7 +20,7 @@ const getPeriodoCompetencia = (dateStr) => {
       anoCompetencia = y + 1;
     }
   }
-
+  
   return { month: mesCompetencia, year: anoCompetencia };
 };
 
