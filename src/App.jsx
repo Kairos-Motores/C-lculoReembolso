@@ -106,15 +106,19 @@ function App() {
 
   const totalMensal = useMemo(() => {
     const hoje = new Date();
-    // Pega o mês atual (0-11, por isso +1)
+    // Força o mês atual como string de 2 dígitos
     const mesAtual = (hoje.getMonth() + 1).toString().padStart(2, '0');
+    const anoAtual = hoje.getFullYear();
 
     return viagensFiltradas
       .filter(v => {
-        const { month } = getPeriodoCompetencia(v.data);
-        return month.toString().padStart(2, '0') === mesAtual;
+        if (!v.data) return false;
+        const { month, year } = getPeriodoCompetencia(v.data);
+        // Compara tanto o mês quanto o ano para evitar erros na virada de ano
+        return month.toString().padStart(2, '0') === mesAtual && year === anoAtual;
       })
-      .reduce((acc, v) => acc + parseFloat(v.pagamento), 0).toFixed(2);
+      .reduce((acc, v) => acc + parseFloat(v.pagamento || 0), 0)
+      .toFixed(2);
   }, [viagensFiltradas]);
 
   const handleSalvar = async () => {
