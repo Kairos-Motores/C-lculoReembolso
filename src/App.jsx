@@ -119,8 +119,9 @@ function App() {
       })
       .reduce((acc, v) => acc + parseFloat(v.pagamento || 0), 0)
       .toFixed(2);
-      console.log("Viagens filtradas:", viagensFiltradas)
   }, [viagensFiltradas]);
+
+  console.log("Viagens filtradas:", viagensFiltradas)
 
   const handleSalvar = async () => {
     const { rota, kmInicio, kmFim, pedagio, outrosGastos, outrosDescricao } = form;
