@@ -174,7 +174,7 @@ function App() {
           <div className="login-header">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
               <div style={{ textAlign: 'left' }}>
-                <h2>Calc Reembolso</h2>
+                <h2>Ka Go</h2>
                 <p>Faça login para continuar</p>
               </div>
               <button type="button" onClick={() => setIsDarkMode(!isDarkMode)} className="theme-toggle" style={{ width: '38px', height: '38px', fontSize: '1rem' }}>
@@ -221,7 +221,7 @@ function App() {
       {user.acesso === 'Motorista' && (
         <div className="card">
           <h3>Nova Viagem</h3>
-          <input className="full-width" type="text" placeholder="Nome da Rota" value={form.rota} onChange={e => setForm({...form, rota: e.target.value})} />
+          <input className="full-width" type="text" placeholder="Destino" value={form.rota} onChange={e => setForm({...form, rota: e.target.value})} />
           <div className="input-group-row">
             <input type="number" inputMode="decimal" placeholder="Pedágio (R$)" value={form.pedagio} onChange={e => setForm({...form, pedagio: e.target.value})} />
             <input type="number" inputMode="decimal" placeholder="Outros (R$)" value={form.outrosGastos} onChange={e => setForm({...form, outrosGastos: e.target.value})} />
