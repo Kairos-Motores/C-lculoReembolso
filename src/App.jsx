@@ -4,12 +4,11 @@ import { Toaster, toast } from 'react-hot-toast';
 import { useDistance } from './hooks/useDistance';
 import './App.css';
 
+// Função auxiliar para calcular o período de pagamento (21 até 20)
 const getPeriodoCompetencia = (dateStr) => {
   const [d, m, y] = dateStr.split('/').map(Number);
   
-  // Regra:
-  // Até dia 20 -> Pertence ao mês atual (m).
-  // Dia 21 em diante -> Pertence ao mês seguinte (m + 1).
+  // Regra: Dia 21 em diante entra no mês seguinte.
   let mesCompetencia = m;
   let anoCompetencia = y;
 
@@ -20,7 +19,6 @@ const getPeriodoCompetencia = (dateStr) => {
       anoCompetencia = y + 1;
     }
   }
-  
   return { month: mesCompetencia, year: anoCompetencia };
 };
 
@@ -32,9 +30,9 @@ function App() {
 
   const [loginForm, setLoginForm] = useState({ usuario: '', senha: '' });
   const [viagens, setViagens] = useState([]);
-  const [form, setForm] = useState({
-    rota: '', combustivel: '', kmInicio: '', kmFim: '',
-    pedagio: '', outrosGastos: '', outrosDescricao: ''
+  const [form, setForm] = useState({ 
+    rota: '', combustivel: '', kmInicio: '', kmFim: '', 
+    pedagio: '', outrosGastos: '', outrosDescricao: '' 
   });
   const [filtroMes, setFiltroMes] = useState('');
   const [filtroRota, setFiltroRota] = useState('');
@@ -84,8 +82,8 @@ function App() {
       } else {
         toast.error(dados.message || "Credenciais inválidas", { id: idToast });
       }
-    } catch (e) {
-      toast.error("Erro de conexão.", { id: idToast });
+    } catch (e) { 
+      toast.error("Erro de conexão.", { id: idToast }); 
     } finally { setEnviando(false); }
   };
 
@@ -109,28 +107,22 @@ function App() {
     });
   }, [viagens, filtroMes, filtroRota, filtroMotorista]);
 
-  const totalGeral = useMemo(() =>
+  // Total Geral: Soma tudo que estiver no filtro atual
+  const totalGeral = useMemo(() => 
     viagensFiltradas.reduce((acc, v) => acc + parseFloat(v.pagamento), 0).toFixed(2)
-    , [viagensFiltradas]);
+  , [viagensFiltradas]);
 
+  // Total Mensal: Soma o mês do filtro, ou o mês atual se nenhum filtro existir
   const totalMensal = useMemo(() => {
     const hoje = new Date();
-    // Força o mês atual como string de 2 dígitos
     const mesAtual = (hoje.getMonth() + 1).toString().padStart(2, '0');
-    const anoAtual = hoje.getFullYear();
+    const targetMonth = filtroMes !== "" ? filtroMes.padStart(2, '0') : mesAtual;
 
-    return viagensFiltradas
-      .filter(v => {
-        if (!v.data) return false;
-        const { month, year } = getPeriodoCompetencia(v.data);
-        // Compara tanto o mês quanto o ano para evitar erros na virada de ano
-        return month.toString().padStart(2, '0') === mesAtual && year === anoAtual;
-      })
-      .reduce((acc, v) => acc + parseFloat(v.pagamento || 0), 0)
-      .toFixed(2);
-  }, [viagensFiltradas]);
-
-  console.log("Viagens filtradas:", viagensFiltradas)
+    return viagens.filter(v => {
+        const { month } = getPeriodoCompetencia(v.data);
+        return month.toString().padStart(2, '0') === targetMonth;
+    }).reduce((acc, v) => acc + parseFloat(v.pagamento || 0), 0).toFixed(2);
+  }, [viagens, filtroMes]);
 
   const handleSalvar = async () => {
     const { rota, kmInicio, kmFim, pedagio, outrosGastos, outrosDescricao } = form;
@@ -191,8 +183,8 @@ function App() {
             </div>
           </div>
           <div className="login-inputs">
-            <input type="text" placeholder="Usuário" required onChange={e => setLoginForm({ ...loginForm, usuario: e.target.value })} />
-            <input type="password" placeholder="Senha (Matrícula)" required onChange={e => setLoginForm({ ...loginForm, senha: e.target.value })} />
+            <input type="text" placeholder="Usuário" required onChange={e => setLoginForm({...loginForm, usuario: e.target.value})} />
+            <input type="password" placeholder="Senha (Matrícula)" required onChange={e => setLoginForm({...loginForm, senha: e.target.value})} />
           </div>
           <button className="btn-save" type="submit" disabled={enviando}>{enviando ? "Acessando..." : "Entrar"}</button>
         </form>
@@ -205,7 +197,7 @@ function App() {
       <Toaster position="top-center" />
       <header className="header-nav">
         <h1>{user.acesso === 'Gestor' ? 'Painel Gestor' : 'Minhas Viagens'}</h1>
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{display: 'flex', gap: '10px'}}>
           <button onClick={() => setIsDarkMode(!isDarkMode)} className="theme-toggle">{isDarkMode ? '☀️' : '🌙'}</button>
           <button onClick={handleLogout} className="theme-toggle">🚪</button>
         </div>
@@ -217,37 +209,34 @@ function App() {
           <span className="value">R$ {totalMensal}</span>
         </div>
         <div className="stat-card">
-          <span className="label">{user.acesso === 'Gestor' ? 'Total Geral' : 'Total Acumulado'}</span>
+          <span className="label">{user.acesso === 'Gestor' ? 'Total Geral Filtrado' : 'Total Acumulado'}</span>
           <span className="value">R$ {totalGeral}</span>
         </div>
       </div>
 
-      {/* Informativo de Lógica */}
-      <div className="card" style={{ marginBottom: '15px', padding: '10px', backgroundColor: 'var(--card-bg)', borderLeft: '4px solid var(--primary)' }}>
-        <small style={{ color: 'var(--text-secondary)' }}>
-          ℹ️ <b>Regra de Pagamento:</b> O mês de competência considera o período do <b>dia 21 do mês anterior ao dia 20 do mês atual</b>.
-        </small>
+      <div className="card" style={{ marginBottom: '15px', padding: '10px', fontSize: '0.8rem', opacity: 0.8 }}>
+        ℹ️ <b>Regra:</b> Fechamento dia 20. Viagens do dia 21 ao 20 do mês seguinte compõem a competência.
       </div>
 
       {user.acesso === 'Motorista' && (
         <div className="card">
           <h3>Nova Viagem</h3>
-          <input className="full-width" type="text" placeholder="Nome da Rota" value={form.rota} onChange={e => setForm({ ...form, rota: e.target.value })} />
+          <input className="full-width" type="text" placeholder="Nome da Rota" value={form.rota} onChange={e => setForm({...form, rota: e.target.value})} />
           <div className="input-group-row">
-            <input type="number" inputMode="decimal" placeholder="Pedágio (R$)" value={form.pedagio} onChange={e => setForm({ ...form, pedagio: e.target.value })} />
-            <input type="number" inputMode="decimal" placeholder="Outros (R$)" value={form.outrosGastos} onChange={e => setForm({ ...form, outrosGastos: e.target.value })} />
+            <input type="number" inputMode="decimal" placeholder="Pedágio (R$)" value={form.pedagio} onChange={e => setForm({...form, pedagio: e.target.value})} />
+            <input type="number" inputMode="decimal" placeholder="Outros (R$)" value={form.outrosGastos} onChange={e => setForm({...form, outrosGastos: e.target.value})} />
           </div>
           {parseFloat(form.outrosGastos) > 0 && (
-            <input className="full-width animate-in" type="text" placeholder="Descrição do gasto extra" value={form.outrosDescricao} onChange={e => setForm({ ...form, outrosDescricao: e.target.value })} />
+            <input className="full-width animate-in" type="text" placeholder="Descrição do gasto extra" value={form.outrosDescricao} onChange={e => setForm({...form, outrosDescricao: e.target.value})} />
           )}
           {!gpsAtivo && (
             <div className="input-group-row animate-in">
-              <input type="number" placeholder="KM Inicial" value={form.kmInicio} onChange={e => setForm({ ...form, kmInicio: e.target.value })} />
-              <input type="number" placeholder="KM Final" value={form.kmFim} onChange={e => setForm({ ...form, kmFim: e.target.value })} />
+              <input type="number" placeholder="KM Inicial" value={form.kmInicio} onChange={e => setForm({...form, kmInicio: e.target.value})} />
+              <input type="number" placeholder="KM Final" value={form.kmFim} onChange={e => setForm({...form, kmFim: e.target.value})} />
             </div>
           )}
           <div className={`gps-section ${gpsAtivo ? 'active' : ''}`}>
-            <button type="button" className={gpsAtivo ? 'btn-gps-stop' : 'btn-gps-start'} onClick={() => { if (!gpsAtivo) { rastrear(); setGpsAtivo(true); } else { pararRastreio(); setGpsAtivo(false); } }}>
+            <button type="button" className={gpsAtivo ? 'btn-gps-stop' : 'btn-gps-start'} onClick={() => { if(!gpsAtivo) { rastrear(); setGpsAtivo(true); } else { pararRastreio(); setGpsAtivo(false); } }}>
               {gpsAtivo ? '🛑 Parar GPS' : '📍 Usar GPS'}
             </button>
             {gpsAtivo && <span className="gps-live"><strong>{distanciaReal.toFixed(2)} km</strong></span>}
@@ -260,7 +249,7 @@ function App() {
         <div className="filter-group" style={{ display: 'grid', gridTemplateColumns: user.acesso === 'Gestor' ? '1fr 1fr 1fr' : '1fr 1fr', gap: '8px' }}>
           <select value={filtroMes} onChange={e => setFiltroMes(e.target.value)}>
             <option value="">Todos os Meses</option>
-            {[...Array(12)].map((_, i) => (<option key={i + 1} value={i + 1}>{new Date(0, i).toLocaleString('pt-BR', { month: 'long' })}</option>))}
+            {[...Array(12)].map((_, i) => (<option key={i+1} value={i+1}>{new Date(0, i).toLocaleString('pt-BR', { month: 'long' })}</option>))}
           </select>
           {user.acesso === 'Gestor' && (
             <select value={filtroMotorista} onChange={e => setFiltroMotorista(e.target.value)}>
@@ -281,17 +270,17 @@ function App() {
 
       <div className="history">
         {viagensFiltradas.map(v => {
-          const { month, year } = getPeriodoCompetencia(v.data);
+          const comp = getPeriodoCompetencia(v.data);
           return (
             <div key={v.id} className="history-item">
               <div className="info">
                 <strong>{v.rota}</strong>
                 <small>
-                  {v.data} | Comp: {month.toString().padStart(2, '0')}/{year} | {v.distanciaPercorrida}km
+                  {v.data} | Comp: {comp.month.toString().padStart(2, '0')}/{comp.year} | {v.distanciaPercorrida}km
                   {user.acesso === 'Gestor' && ` | Por: ${v.criadoPor}`}
                 </small>
                 {(parseFloat(v.pedagio || 0) > 0 || parseFloat(v.outrosGastos || 0) > 0) && (
-                  <small style={{ display: 'block', color: 'var(--secondary)' }}>
+                  <small style={{display: 'block', color: 'var(--secondary)'}}>
                     Extras: R$ {(parseFloat(v.pedagio || 0) + parseFloat(v.outrosGastos || 0)).toFixed(2)}
                     {v.outrosDescricao && ` (${v.outrosDescricao})`}
                   </small>
